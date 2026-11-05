@@ -760,11 +760,12 @@ function renderShortTerm(j){
   return html;
 }
 function fetchStRec(){
-  // 云端定时任务只PUT仓库JSON（不触发构建），raw 即时反映最新目录；同源仅作兜底
-  return fetch('https://raw.githubusercontent.com/hugoyeswood/stock-picker-v3/main/short_term_rec.json?v='+Date.now())
+  // 同源优先：由 network-first Service Worker 拦截返回线上最新，国内访问更稳；
+  // raw.githubusercontent.com 仅作兜底（部分网络环境可达性差）
+  return fetch('short_term_rec.json?v='+Date.now())
     .then(function(r){ return r.ok?r.json():null; })
     .catch(function(){
-      return fetch('short_term_rec.json?v='+Date.now()).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; });
+      return fetch('https://raw.githubusercontent.com/hugoyeswood/stock-picker-v3/main/short_term_rec.json?v='+Date.now()).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; });
     });
 }
 function refreshShortTerm(){
@@ -1125,7 +1126,7 @@ html_doc = f"""<!DOCTYPE html>
 {APP_JS_EXTRA}
 {APP_JS_ADVICE}
 {APP_JS_HOLD}
-if ('serviceWorker' in navigator) {{ navigator.serviceWorker.register('./service-worker.js'); }}
+if ('serviceWorker' in navigator) {{ navigator.serviceWorker.register('./service-worker.js?v=20261105-v3'); }}
 </script>
 </body></html>"""
 
