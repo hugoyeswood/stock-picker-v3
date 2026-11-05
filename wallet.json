@@ -1,0 +1,11 @@
+{
+  "available": 1000.0,
+  "currency": "CNY",
+  "ledger": [
+    {
+      "date": "2026-10-31",
+      "amount": 1000.0,
+      "note": "初始转入"
+    }
+  ]
+}
