@@ -1,7 +1,7 @@
 /* 离线缓存：优先取最新（每天数据会变），断网时用上次缓存的 */
-const CACHE = 'stock-picker-v3';
+const CACHE = 'stock-picker-v3-20261106';
 const ASSETS = [
-  './', './index.html', './data.json', './manifest.json',
+  './', './index.html', './data.json', './manifest.json', './update-check.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'
 ];
 
@@ -22,8 +22,9 @@ self.addEventListener('activate', (e) => {
 // network-first：在线时永远拿最新，离线时用缓存兜底
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+  const isOwn = e.request.url.indexOf(self.location.origin) === 0;
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, isOwn ? { cache: 'no-store' } : undefined)
       .then((res) => {
         const copy = res.clone();
         caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});

@@ -1126,8 +1126,9 @@ html_doc = f"""<!DOCTYPE html>
 {APP_JS_EXTRA}
 {APP_JS_ADVICE}
 {APP_JS_HOLD}
-if ('serviceWorker' in navigator) {{ navigator.serviceWorker.register('./service-worker.js?v=20261105-v3'); }}
+if ('serviceWorker' in navigator) {{ navigator.serviceWorker.register('./service-worker.js?v=20261106'); }}
 </script>
+<script src="./update-check.js" data-page-upd="{now}"></script>
 </body></html>"""
 
 with open("index.html", "w", encoding="utf-8") as f:
