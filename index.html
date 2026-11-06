@@ -1031,7 +1031,7 @@ function showStockDetail(code,name){
   var cb='detailCb_'+Date.now();
   window[cb]=function(){
     try{
-      var data=window['v_'+code];
+      var data=window['v_'+normCode(code)];
       if(!data||typeof data!=='string'){ uiAlert('获取行情失败，请重试'); return; }
       var parts=data.split('~');
       if(parts.length<35) return;
@@ -1074,7 +1074,7 @@ function showStockDetail(code,name){
     }catch(e){ console.log('详情解析失败',e); uiAlert('获取行情失败，请重试'); }
     finally{ delete window[cb]; var s=document.getElementById(cb); if(s&&s.parentNode) s.parentNode.removeChild(s); }
   };
-  var s=document.createElement('script'); s.id=cb; s.src='https://qt.gtimg.cn/q='+code;
+  var s=document.createElement('script'); s.id=cb; s.src='https://qt.gtimg.cn/q='+normCode(code);
   s.onload=function(){ try{ window[cb](); }catch(e){} if(s.parentNode) s.parentNode.removeChild(s); };
   s.onerror=function(){ try{ window[cb](); }catch(e){ uiAlert('获取行情失败，请检查网络'); } if(s.parentNode) s.parentNode.removeChild(s); };
   document.body.appendChild(s);
@@ -1189,27 +1189,52 @@ function getPriceMap(){
   document.querySelectorAll('.chg[data-code]').forEach(function(el){ _priceMap.c[el.getAttribute('data-code')] = el; });
   return _priceMap;
 }
+function normCode(c){
+  c = String(c===undefined||c===null?'':c).replace(/\s+/g,'').toLowerCase();
+  if(!c) return '';
+  if(/^(sh|sz|bj)[0-9]{6}$/.test(c)) return c;
+  if(/^[0-9]{6}$/.test(c)){
+    var d=c.charAt(0);
+    if(d==='6'||d==='5'||d==='9') return 'sh'+c;
+    if(d==='4'||d==='8') return 'bj'+c;
+    return 'sz'+c;
+  }
+  return c;
+}
+
 function refreshRealtime(){
   var codes = [];
   document.querySelectorAll('.price[data-code]').forEach(function(el){ var c=el.getAttribute('data-code'); if(codes.indexOf(c)<0) codes.push(c); });
   var wl=collectWatchCodes(); wl.forEach(function(x){ if(codes.indexOf(x.code)<0) codes.push(x.code); });
   if(!codes.length) return;
   var m = getPriceMap();
+  var req = [], orig = {};
+  codes.forEach(function(c){
+    var r = normCode(c);
+    if(!r) return;
+    if(req.indexOf(r)<0) req.push(r);
+    if(!orig[r]) orig[r] = [];
+    if(orig[r].indexOf(c)<0) orig[r].push(c);
+  });
+  if(!req.length) return;
   var s = document.createElement('script');
-  s.src = 'https://qt.gtimg.cn/q=' + codes.join(',');
+  s.src = 'https://qt.gtimg.cn/q=' + req.join(',');
   s.onload = function(){
     try{
-      codes.forEach(function(code){
-        var data = window['v_' + code];
+      req.forEach(function(real){
+        var data = window['v_' + real];
         if(!data || typeof data !== 'string') return;
         var parts = data.split('~');
         if(parts.length < 35) return;
         var price = parseFloat(parts[3]), chg = parseFloat(parts[32]);
         if(!price || isNaN(price)) return;
-        var pe = m.p[code], ce = m.c[code];
-        _lastPrice[code] = price; _lastChg[code] = chg; _lastPrev[code] = parseFloat(parts[4]); _lastVol[code] = parseFloat(parts[49]); _lastTr[code] = parseFloat(parts[38]); _lastAmp[code] = parseFloat(parts[43]); _lastAvg[code] = parseFloat(parts[51]); _lastHigh[code] = parseFloat(parts[33]); _lastLow[code] = parseFloat(parts[34]); _lastO[code] = parseFloat(parts[7]); _lastI[code] = parseFloat(parts[8]);
-        if(pe) pe.textContent = '¥' + price.toFixed(2);
-        if(ce){ ce.textContent = (chg>=0?'+':'') + chg.toFixed(2) + '%'; ce.style.color = chg>=0 ? '#d32f2f' : '#2e7d32'; }
+        var list = orig[real] || [];
+        list.forEach(function(code){
+          var pe = m.p[code], ce = m.c[code];
+          _lastPrice[code] = price; _lastChg[code] = chg; _lastPrev[code] = parseFloat(parts[4]); _lastVol[code] = parseFloat(parts[49]); _lastTr[code] = parseFloat(parts[38]); _lastAmp[code] = parseFloat(parts[43]); _lastAvg[code] = parseFloat(parts[51]); _lastHigh[code] = parseFloat(parts[33]); _lastLow[code] = parseFloat(parts[34]); _lastO[code] = parseFloat(parts[7]); _lastI[code] = parseFloat(parts[8]);
+          if(pe) pe.textContent = '¥' + price.toFixed(2);
+          if(ce){ ce.textContent = (chg>=0?'+':'') + chg.toFixed(2) + '%'; ce.style.color = chg>=0 ? '#d32f2f' : '#2e7d32'; }
+        });
       });
     }catch(e){ console.log('实时解析失败', e); }
     if(s.parentNode) s.parentNode.removeChild(s);
