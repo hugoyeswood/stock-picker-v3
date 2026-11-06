@@ -1569,12 +1569,22 @@ function fetchDayVol(code, cb){
   if(_volPending[c]){ cb(null, null); return; }
   _volPending[c] = 1;
   var key = 'quotebridge_v6_line_hs_' + c + '_01_last';
-  var s = document.createElement('script');
-  s.src = 'https://d.10jqka.com.cn/v6/line/hs_' + c + '/01/last.js?ts=' + Date.now();
-  s.onload = function(){
+  var done = false, sc = null;
+  function finish(rows){
+    if(done) return; done = true;
+    delete _volPending[c];
+    try{ delete window[key]; }catch(e){}
+    if(sc && sc.parentNode) sc.parentNode.removeChild(sc);
+    if(rows && rows.length){
+      var t = volTrend(rows);
+      _volCache[c] = { rows:rows, t:t, ts:Date.now() };
+      cb(rows, t);
+    } else cb(null, null);
+  }
+  // JSONP 回调：先占位，避免 "xxx is not a function" 抛错
+  window[key] = function(d){
     var rows = null;
     try{
-      var d = window[key];
       if(d && d.data){
         rows = [];
         var arr = String(d.data).split(';');
@@ -1586,18 +1596,14 @@ function fetchDayVol(code, cb){
           rows.push(o);
         }
       }
-    }catch(e){ rows = null; }
-    try{ delete window[key]; }catch(e){}
-    delete _volPending[c];
-    if(s.parentNode) s.parentNode.removeChild(s);
-    if(rows && rows.length){
-      var t = volTrend(rows);
-      _volCache[c] = { rows:rows, t:t, ts:Date.now() };
-      cb(rows, t);
-    } else cb(null, null);
+    }catch(err){ rows = null; }
+    finish(rows);
   };
-  s.onerror = function(){ delete _volPending[c]; if(s.parentNode) s.parentNode.removeChild(s); cb(null, null); };
-  document.body.appendChild(s);
+  sc = document.createElement('script');
+  sc.src = 'https://d.10jqka.com.cn/v6/line/hs_' + c + '/01/last.js?ts=' + Date.now();
+  sc.onload = function(){ setTimeout(function(){ finish(null); }, 400); };
+  sc.onerror = function(){ finish(null); };
+  document.body.appendChild(sc);
 }
 function _dayStr(d){ return ''+d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2); }
 // 2) 三日量能趋势：近3日均量 vs 前3日均量；grow=最近两次日环比中放量的次数(0~2)
