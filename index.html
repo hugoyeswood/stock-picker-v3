@@ -1736,7 +1736,7 @@ function volPanelHtml(code, t){
   var pnlPct=cost>0?((p-cost)/cost*100):0;
   var col=t.trend==='放大'?'#2e7d32':(t.trend==='萎缩'?'#e65100':'#546e7a');
   var diff=(t.ratio-1)*100;
-  var line='近3日均 <b>'+(t.a3/10000).toFixed(1)+'万手</b> / 前3日均 <b>'+(t.p3/10000).toFixed(1)+'万手</b>（'+(diff>=0?'+':'')+diff.toFixed(0)+'%）';
+  var line='近3日均 <b>'+(t.a3/1000000).toFixed(1)+'万手</b> / 前3日均 <b>'+(t.p3/1000000).toFixed(1)+'万手</b>（'+(diff>=0?'+':'')+diff.toFixed(0)+'%）';
   var judge, jcol, why;
   var noGrow = (t.grow<=0 && t.ratio<1.05);
   if(noGrow){
