@@ -1414,9 +1414,17 @@ function refreshHoldings(){
     var tp=s[h.code]&&s[h.code].tp?parseFloat(s[h.code].tp):cost*1.10;
     var sl=s[h.code]&&s[h.code].sl?parseFloat(s[h.code].sl):cost*0.95;
     var tpPct=((tp-cost)/cost*100).toFixed(1), slPct=((sl-cost)/cost*100).toFixed(1);
+    var pc0=_lastPrev[h.code];
+    var tdyTxt='--', tdyCol='color:#999;font-weight:700;';
+    if(lp&&pc0&&pc0>0){
+      var tv=(lp-pc0)*h.qty, tpc=(lp-pc0)/pc0*100;
+      tdyTxt=(tv>=0?'+':'')+tv.toFixed(2)+'元（'+(tpc>=0?'+':'')+tpc.toFixed(2)+'%）';
+      tdyCol=tv>=0?'color:#d32f2f;font-weight:800;':'color:#2e7d32;font-weight:800;';
+    }
     html+='<div class="h-item">'+
       '<div class="h-top"><b>'+h.name+'</b><span class="st-code">'+h.code+'</span><span class="h-qty">持仓 '+h.qty+'股</span><button class="h-ops" data-holdop="open" data-code="'+h.code+'">⚙️ 操作</button></div>'+
       '<div class="h-row">成本 <b>¥'+cost.toFixed(2)+'</b> · 现价 <b class="price" data-code="'+h.code+'">'+(lp?'¥'+lp.toFixed(2):'--')+'</b> <span class="chg" data-code="'+h.code+'" style="'+lcCol+'">'+lcTxt+'</span></div>'+
+      '<div class="h-row">📅 今日盈亏：<b id="tdy_'+h.code+'" style="'+tdyCol+'">'+tdyTxt+'</b>'+(pc0?' <span style="color:#999;font-size:12px;">（昨收 ¥'+pc0.toFixed(2)+'）</span>':'')+'</div>'+
       '<div class="h-row">📈 上涨预估：<b style="color:#2e7d32;" data-edit="'+h.code+':tp" title="点击修改">¥'+tp.toFixed(2)+'（+'+tpPct+'%）</b></div>'+
       '<div class="h-row">🛡 跌停峰值：<b style="color:#c62828;" data-edit="'+h.code+':sl" title="点击修改">¥'+sl.toFixed(2)+'（'+slPct+'%）</b></div>'+
       '<div class="h-pnl" id="pnl_'+h.code+'">--</div>'+
