@@ -1613,6 +1613,34 @@ function refreshShortTerm(){
 }
 setTimeout(refreshShortTerm, 2500);   // 页面加载后先拉一次
 setInterval(refreshShortTerm, 900000); // 每15分钟更新推荐目录
+
+// ===== 手动刷新按钮（右下角悬浮）：一键重拉推荐目录+持仓+实时行情 =====
+function manualRefreshAll(){
+  var b=document.getElementById('manualRefreshBtn');
+  if(b){ b.style.opacity='0.6'; b.textContent='刷新中…'; }
+  try{ refreshShortTerm(); }catch(e){}
+  try{ if(typeof refreshHoldings==='function') refreshHoldings(); }catch(e){}
+  try{ if(typeof refreshRealtime==='function') refreshRealtime(); }catch(e){}
+  try{ if(typeof refreshFundPanel==='function') refreshFundPanel(); }catch(e){}
+  setTimeout(function(){
+    if(b){ b.style.opacity='1'; b.textContent='🔄 手动刷新'; }
+    try{ uiAlert('✅ 已手动刷新\n推荐目录 / 持仓 / 实时行情已重新拉取最新数据'); }catch(e){}
+  }, 1000);
+}
+(function(){
+  function mk(){
+    if(document.getElementById('manualRefreshBtn')) return;
+    var b=document.createElement('button');
+    b.id='manualRefreshBtn'; b.type='button'; b.textContent='🔄 手动刷新';
+    b.style.cssText='position:fixed;right:14px;bottom:92px;z-index:9998;padding:11px 16px;border-radius:24px;border:none;background:linear-gradient(135deg,#1a237e,#3949ab);color:#fff;font-size:14px;font-weight:bold;box-shadow:0 4px 14px rgba(26,35,126,.35);cursor:pointer;';
+    b.onclick=manualRefreshAll;
+    document.body.appendChild(b);
+  }
+  if(document.body) mk(); else document.addEventListener('DOMContentLoaded', mk);
+})();
+// 回到前台/重新联网时立即重拉，避免后台定时器被系统挂起后一直显示旧目录
+document.addEventListener('visibilitychange', function(){ if(!document.hidden){ try{ refreshShortTerm(); }catch(e){} } });
+window.addEventListener('online', function(){ try{ refreshShortTerm(); }catch(e){} });
 // ===== 持仓着重关注：每小时抛售/加仓提示 =====
 // 信号矩阵（对每只持仓股，现价用每秒实时缓存 _lastPrice）：
 //   抛售SELL：现价≤止损线×1.02（逼近跌停峰值）| 现价≥止盈目标（涨值巅峰落袋）| 当日涨幅≥9.5%（接近涨停锁利）
