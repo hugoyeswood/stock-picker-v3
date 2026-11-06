@@ -901,11 +901,11 @@
 </div>
 <div class="tab-page" id="tabHold">
 <div class="card holdings">
-  <div class="card-top"><div class="name">📊 我的持仓 · 实时跟进</div><div class="st-date">每10秒刷新</div></div>
+  <div class="card-top"><div class="name">📊 我的持仓 · 实时跟进</div><div class="st-date">每2秒实时重算 · 触发即提醒</div></div>
   <div class="h-alert" id="alertBar" style="display:none"></div>
-  <div class="h-toolbar"><button onclick="enableNotify()" class="h-notify">🔔 开启预警通知</button><button onclick="showMonthReport()" class="h-notify" style="background:#e65100;">📊 本月持仓报告</button><button onclick="exportBackup()" class="h-bak">💾 备份数据</button><button onclick="importBackup()" class="h-bak" style="background:#455a64;">♻️ 恢复数据</button><span class="h-tip">点击数值可修改上涨预估/跌停峰值</span></div>
+  <div class="h-toolbar"><button onclick="enableNotify()" class="h-notify">🔔 开启预警通知</button><button onclick="showAdviceRules()" class="h-notify" style="background:#1a237e;">📖 加仓/抛售规则</button><button onclick="showMonthReport()" class="h-notify" style="background:#e65100;">📊 本月持仓报告</button><button onclick="exportBackup()" class="h-bak">💾 备份数据</button><button onclick="importBackup()" class="h-bak" style="background:#455a64;">♻️ 恢复数据</button><span class="h-tip">点击数值可修改上涨预估/跌停峰值</span></div>
   <div id="holdingsList"><div class="h-empty">暂无持仓：搜索买入后自动实时跟进</div></div>
-  <div class="h-hint">⚠️ 模拟交易仅记录本地，不构成投资建议；页面打开时跌近跌停峰值自动预警提醒</div>
+  <div class="h-hint">⚠️ 实时监控：现价每秒更新 → 建议每2秒重算 → 触发立即弹提醒（紧急10分钟 / 普通15分钟冷却，不重复骚扰）；模拟交易仅记录本地，不构成投资建议</div>
 </div>
 <div class="card w-card">
   <div class="card-top"><div class="name">📡 未持股 · 波动推荐</div><div class="st-date">涨跌幅≥4%异动自动提示</div></div>
@@ -1390,11 +1390,12 @@ function refreshHoldings(){
       '<div class="h-row">🛡 跌停峰值：<b style="color:#c62828;" data-edit="'+h.code+':sl" title="点击修改">¥'+sl.toFixed(2)+'（'+slPct+'%）</b></div>'+
       '<div class="h-pnl" id="pnl_'+h.code+'">--</div>'+
       (function(_a,_c,_q,_lp){
-        var r='';
-        if(_a){ if(_a.advice==='SELL') r='<div class="h-advice" style="color:#c62828;">🚨 操作建议：抛售（['+_a.rule+']'+_a.why+'）</div>';
-                else if(_a.advice==='ADD') r='<div class="h-advice" style="color:#2e7d32;">➕ 操作建议：加仓（['+_a.rule+']'+_a.why+'）</div>'; }
-        else if(_lp&&_c&&(_lp-_c)*_q<0){ r='<div class="h-advice" style="color:#2e7d32;">📌 操作建议：持有观望，守住止损线¥'+(_c*0.95).toFixed(2)+'</div>'; }
-        return r;
+        if(!_a){ if(_lp&&_c&&(_lp-_c)*_q<0){ return '<div class="h-advice" style="color:#546e7a;">📌 持有观望：未触发买卖信号，守住止损线¥'+(_c*0.95).toFixed(2)+'</div>'; } return ''; }
+        var isSell=_a.advice==='SELL';
+        var col=isSell?(_a.act==='清仓'?'#c62828':'#e65100'):(_a.act==='加仓'?'#2e7d32':'#558b2f');
+        var bg=isSell?(_a.act==='清仓'?'#ffebee':'#fff3e0'):(_a.act==='加仓'?'#e8f5e9':'#f1f8e9');
+        var tag=isSell?(_a.act==='清仓'?'🚨 建议清仓':'⚠️ 建议减半'):(_a.act==='加仓'?'➕ 建议加仓':'🔍 试探性加仓');
+        return '<div class="h-advice" style="color:'+col+';background:'+bg+';padding:6px 8px;border-radius:6px;font-weight:700;">'+tag+' <span style="font-weight:400;">['+_a.rule+'] '+_a.why+'</span> <button data-holdop="open" data-code="'+_a.code+'" style="margin-left:6px;padding:4px 10px;border:none;border-radius:12px;background:'+col+';color:#fff;font-size:12px;">去操作</button></div>';
       })(holdAdviceFor(h), cost, h.qty, lp)+'</div>';
   });
   el.innerHTML=html;
@@ -1659,19 +1660,19 @@ function holdAdviceFor(h){
   var high=_lastHigh[h.code]||0; var low=_lastLow[h.code]||0;
   var pnlPct=(p-cost)/cost*100;
   var pullback=high>0?(high-p)/high*100:0; // 距当日最高回落%
-  var advice=null, why='', rule='';
+  var advice=null, why='', rule='', act='', level=0;
   // —— 抛售 SELL：利弗莫尔（截断亏损/顶部派发/强弱转换）· 欧奈尔（目标止盈/赶顶锁利） ——
-  if(p<=sl*1.02){ advice='SELL'; rule='利弗莫尔·截断亏损'; why='现价¥'+p.toFixed(2)+'破位止损线¥'+sl.toFixed(2)+'，"截断亏损，让利润奔跑"，立即离场'; }
-  else if(p>=tp){ advice='SELL'; rule='欧奈尔·目标止盈'; why='已达上涨预估¥'+tp.toFixed(2)+'，欧奈尔"+20%止盈"纪律，落袋为安'; }
-  else if(chg>=3&&chg<=7&&vr>=2.5&&amp>=8&&pullback>=3){ advice='SELL'; rule='利弗莫尔·顶部派发'; why='放量滞涨：涨'+chg.toFixed(2)+'%但量比'+vr.toFixed(1)+'、已从最高回落'+pullback.toFixed(1)+'%，主力派发，抛售'; }
-  else if(pnlPct>=15&&chg>=6){ advice='SELL'; rule='欧奈尔·赶顶锁利'; why='累计盈利'+pnlPct.toFixed(1)+'%且加速赶顶（+'+chg.toFixed(2)+'%），锁定利润'; }
-  else if(chg<=-5||pnlPct<=-8){ advice='SELL'; rule='利弗莫尔·强弱转换'; why='今日'+chg.toFixed(2)+'%由强转弱'+(pnlPct<=-8?('、累计浮亏'+pnlPct.toFixed(1)+'%'):'')+'，趋势转空，离场观望'; }
+  if(p<=sl*1.02){ advice='SELL'; level=3; act='清仓'; rule='利弗莫尔·截断亏损'; why='现价¥'+p.toFixed(2)+'跌破止损线¥'+sl.toFixed(2)+'，"截断亏损，让利润奔跑"，立即清仓'; }
+  else if(p>=tp){ advice='SELL'; level=2; act='清仓'; rule='欧奈尔·目标止盈'; why='已达上涨预估¥'+tp.toFixed(2)+'，止盈纪律，落袋为安'; }
+  else if(chg>=3&&chg<=7&&vr>=2.5&&amp>=8&&pullback>=3){ advice='SELL'; level=2; act='减半'; rule='利弗莫尔·顶部派发'; why='放量滞涨：涨'+chg.toFixed(2)+'%但量比'+vr.toFixed(1)+'、已从最高回落'+pullback.toFixed(1)+'%，主力在派发，先减一半'; }
+  else if(pnlPct>=15&&chg>=6){ advice='SELL'; level=2; act='减半'; rule='欧奈尔·赶顶锁利'; why='累计盈利'+pnlPct.toFixed(1)+'%且加速赶顶（+'+chg.toFixed(2)+'%），先减半锁定利润'; }
+  else if(chg<=-5||pnlPct<=-8){ advice='SELL'; level=3; act='清仓'; rule='利弗莫尔·强弱转换'; why='今日'+chg.toFixed(2)+'%由强转弱'+(pnlPct<=-8?('、累计浮亏'+pnlPct.toFixed(1)+'%'):'')+'，趋势转空，清仓观望'; }
   // —— 加仓 ADD：欧奈尔（突破回踩）· 利弗莫尔（关键点企稳）· 海龟（缩量回调）· 幽灵（盈利加码） ——
-  else if(pnlPct>=-2&&pnlPct<=2&&chg>=1&&chg<=4&&vr>=1.5){ advice='ADD'; rule='欧奈尔·突破回踩'; why='成本附近（'+pnlPct.toFixed(1)+'%）放量上攻（量比'+vr.toFixed(1)+'，+'+chg.toFixed(2)+'%），突破回踩买点，加仓'; }
-  else if(p>sl*1.02&&pnlPct<=-4&&pnlPct>=-6&&chg>=-3&&chg<=0&&vr<1.5){ advice='ADD'; rule='利弗莫尔·关键点企稳'; why='回调至成本下方'+(-pnlPct).toFixed(1)+'%未破止损、缩量企稳（量比'+vr.toFixed(1)+'），关键点支撑，分批加仓'; }
-  else if(pnlPct<=-2&&pnlPct>=-5&&amp>0&&amp<5&&chg>=-2&&chg<=1){ advice='ADD'; rule='海龟·缩量回调到位'; why='缩量回调到位（振幅'+amp.toFixed(1)+'%），趋势中回踩，加仓'; }
-  else if(pnlPct>=2&&pnlPct<=8&&chg>=1&&chg<=5&&vr>=1.5&&vr<=3){ advice='ADD'; rule='幽灵·盈利加码'; why='趋势确认盈利+'+pnlPct.toFixed(1)+'%、量价配合（量比'+vr.toFixed(1)+'），金字塔加仓'; }
-  return advice?{code:h.code,name:h.name,price:p,cost:cost,sl:sl,tp:tp,pnlPct:pnlPct,chg:chg,vr:vr,tr:tr,amp:amp,high:high,low:low,advice:advice,rule:rule,why:why}:null;
+  else if(pnlPct>=-2&&pnlPct<=2&&chg>=1&&chg<=4&&vr>=1.5){ advice='ADD'; level=2; act='加仓'; rule='欧奈尔·突破回踩'; why='成本附近（'+pnlPct.toFixed(1)+'%）放量上攻（量比'+vr.toFixed(1)+'，+'+chg.toFixed(2)+'%），突破回踩买点，可加一份仓位'; }
+  else if(p>sl*1.03&&pnlPct<=-1.8&&pnlPct>=-4.2&&chg>=-3&&chg<=0&&vr<1.5){ advice='ADD'; level=1; act='试探加仓'; rule='利弗莫尔·关键点企稳'; why='回调至成本下方'+(-pnlPct).toFixed(1)+'%、距止损线仍有'+((p/sl-1)*100).toFixed(1)+'%空间且缩量企稳（量比'+vr.toFixed(1)+'），关键点获支撑，先试探性加半份'; }
+  else if(pnlPct<=-2&&pnlPct>=-5&&amp>0&&amp<5&&chg>=-2&&chg<=1){ advice='ADD'; level=1; act='试探加仓'; rule='海龟·缩量回调到位'; why='缩量回调到位（振幅'+amp.toFixed(1)+'%），趋势中回踩，先试探性加半份'; }
+  else if(pnlPct>=2&&pnlPct<=8&&chg>=1&&chg<=5&&vr>=1.5&&vr<=3){ advice='ADD'; level=2; act='加仓'; rule='幽灵·盈利加码'; why='趋势确认盈利+'+pnlPct.toFixed(1)+'%、量价配合（量比'+vr.toFixed(1)+'），金字塔加仓'; }
+  return advice?{code:h.code,name:h.name,price:p,cost:cost,sl:sl,tp:tp,pnlPct:pnlPct,chg:chg,vr:vr,tr:tr,amp:amp,high:high,low:low,advice:advice,rule:rule,why:why,act:act,level:level}:null;
 }
 function renderHoldAdvice(){
   var hs=getHoldings(); if(!hs.length) return;
@@ -1689,29 +1690,62 @@ function renderHoldAdvice(){
     wrap.appendChild(div);
   });
 }
-function checkHourlyAdvice(){
+// ===== 持仓实时建议引擎：状态一变立即提示（不再是每小时一次） =====
+function adviceMsg(a){
+  return a.name+'·'+a.act+'（['+a.rule+'] '+a.why+'）';
+}
+function checkAdvice(){
   var hs=getHoldings(); if(!hs.length) return;
+  var now=Date.now(), st={};
+  try{ st=JSON.parse(localStorage.getItem('myAdviceAt')||'{}')||{}; }catch(e){ st={}; }
   var sell=[], add=[];
   hs.forEach(function(h){
-    var a=holdAdviceFor(h);
-    if(a){ if(a.advice==='SELL') sell.push(a); else if(a.advice==='ADD') add.push(a); }
+    var a=holdAdviceFor(h); if(!a) return;
+    var key=a.advice+'_'+a.act;
+    var prev=st[h.code]||{};
+    var cd=a.level>=3?900000:1800000; // 紧急15分钟 / 普通30分钟 冷却（同方向不重复轰炸，但仍持续复述）
+    if(prev.key===key && now-(prev.t||0)<cd) return;
+    st[h.code]={key:key,t:now};
+    if(a.advice==='SELL') sell.push(a); else add.push(a);
   });
+  try{ localStorage.setItem('myAdviceAt', JSON.stringify(st)); }catch(e){}
   if(!sell.length&&!add.length) return;
-  var now=new Date();
-  var key=String(now.getFullYear())+('0'+(now.getMonth()+1)).slice(-2)+('0'+now.getDate()).slice(-2)+('0'+now.getHours()).slice(-2);
-  var last=''; try{ last=localStorage.getItem('myAdviceHour')||''; }catch(e){}
-  if(last===key) return; // 同一小时只提示一次
-  try{ localStorage.setItem('myAdviceHour', key); }catch(e){}
   var msg='';
-  if(sell.length) msg+='🚨 建议抛售：'+sell.map(function(a){ return a.name+'（['+a.rule+']'+a.why+'）'; }).join('；')+'。';
-  if(add.length) msg+='➕ 建议加仓：'+add.map(function(a){ return a.name+'（['+a.rule+']'+a.why+'）'; }).join('；')+'。';
+  if(sell.length) msg+='🚨 '+sell.map(adviceMsg).join('；')+'。';
+  if(add.length) msg+='➕ '+add.map(adviceMsg).join('；')+'。';
   var bar=document.getElementById('alertBar');
-  if(bar){ bar.innerHTML='🕐 <b>每小时持仓提示：</b>'+msg+' <button data-close-alert="1">关闭</button>'; bar.style.display='block'; }
+  if(bar){ bar.innerHTML='⏱ <b>持仓实时建议：</b>'+msg+' <button data-close-alert="1">关闭</button>'; bar.style.display='block'; }
   try{
-    if(Notification&&Notification.permission==='granted'){ new Notification('持仓抛售/加仓提示', {body:msg}); }
+    if(window.Notification&&Notification.permission==='granted'){ new Notification(sell.length?'🚨 建议抛售':'➕ 建议加仓', {body:msg}); }
   }catch(e){}
 }
-setInterval(checkHourlyAdvice, 60000); // 每分钟检查，命中新小时即汇总提示（每小时最多一次）
+setInterval(checkAdvice, 15000); // 每15秒重算一次，状态变化立即提示
+setTimeout(checkAdvice, 3000);   // 页面加载后先检查一次
+
+// ===== 规则说明面板（点「📖 加仓/抛售规则」查看） =====
+function showAdviceRules(){
+  var old=document.getElementById('uiMask'); if(old&&old.parentNode) old.parentNode.removeChild(old);
+  var body='<div style="max-height:52vh;overflow:auto;text-align:left;font-size:13px;line-height:1.85;padding-right:4px;">'+
+    '<div style="color:#c62828;font-weight:800;margin-top:2px;">🚨 清仓（紧急 · 15分钟冷却）</div>'+
+    '① 现价 ≤ 止损线×1.02 → 破位止损，立即清仓<br>'+
+    '② 当日跌幅 ≤ -5% 或 累计浮亏 ≤ -8% → 趋势转空，清仓<br>'+
+    '<div style="color:#e65100;font-weight:800;margin-top:8px;">⚠️ 减半 / 止盈（留或不留半仓看盘面）</div>'+
+    '③ 现价 ≥ 上涨预估 → 到止盈目标，落袋为安<br>'+
+    '④ 放量滞涨：涨3~7% + 量比≥2.5 + 振幅≥8% + 距当日高点回落≥3% → 主力派发，先减一半<br>'+
+    '⑤ 累计盈利≥15% 且 当日≥+6% → 加速赶顶，减半锁利<br>'+
+    '<div style="color:#2e7d32;font-weight:800;margin-top:8px;">➕ 加仓（正常一份）</div>'+
+    '⑥ 成本±2% + 当日+1~4% + 量比≥1.5 → 突破回踩买点<br>'+
+    '⑦ 累计盈利+2~8% + 当日+1~5% + 量比1.5~3 → 盈利加码（金字塔）<br>'+
+    '<div style="color:#558b2f;font-weight:800;margin-top:8px;">🔍 试探性加仓（半份）</div>'+
+    '⑧ 浮亏-2~-4% + 当日-3~0% + 量比<1.5 + 距止损仍有≥3%空间 → 缩量企稳，关键点支撑<br>'+
+    '⑨ 浮亏-2~-5% + 振幅<5% + 当日-2~+1% → 缩量回调到位<br>'+
+    '<div style="color:#546e7a;font-weight:800;margin-top:8px;">📌 持有观望</div>'+
+    '未命中以上任一条件就不动，守住止损线。<br><br>'+
+    '<div style="color:#888;font-size:12px;">刷新节奏：现价每秒更新 → 建议每2秒重算 → 命中即弹提醒（同票同方向冷却期不重复）。<br>止损线默认成本×0.95、止盈线默认成本×1.10，卡片上点数值可自行修改（把上涨预估调高，才会走到「赶顶锁利」）。<br>仅为规则化参考，不构成投资建议。</div></div>';
+  var mask=document.createElement('div'); mask.id='uiMask'; mask.className='ui-mask';
+  mask.innerHTML='<div class="ui-box"><div class="ui-title">加仓 / 抛售规则（实时生效）</div>'+body+'<div class="ui-btns"><button class="ui-btn ui-btn-ok" onclick="_uiRemove()">知道了</button></div></div>';
+  document.body.appendChild(mask);
+}
 // ===== 持仓操作：加仓/减仓/清仓/卖出盈利点 =====
 function doHoldOp(code,name,price,op){
   if(op==='buyMore') buyMore(code,name,price);
