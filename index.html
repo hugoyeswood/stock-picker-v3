@@ -192,6 +192,10 @@
 </div>
 <div class="tab-page" id="tabCand">
   <div id="poolMeta"></div>
+  <div style="display:flex;gap:8px;margin:2px 0 10px;flex-wrap:wrap;">
+    <button onclick="showDataLogic()" style="padding:9px 14px;border:none;border-radius:18px;background:#1a237e;color:#fff;font-size:12px;font-weight:bold;">📊 评分逻辑</button>
+    <button onclick="manualRefreshAll()" style="padding:9px 14px;border:none;border-radius:18px;background:#3949ab;color:#fff;font-size:12px;">🔄 刷新分析</button>
+  </div>
   <div class="stat">
     <div><b>20</b><span>今日候选</span></div>
     <div><b>1543</b><span>买得起的候选</span></div>
@@ -1121,6 +1125,7 @@ function loadCandidatePool(){
     .catch(function(){ return null; })
     .then(function(j){
       if(!j || !j.candidates || !j.candidates.length) return;
+      window._pool = j.candidates;
       var el=document.getElementById('poolMeta');
       if(!el) return;
       var n=0, best=0;
@@ -1128,6 +1133,7 @@ function loadCandidatePool(){
       el.innerHTML='<div style="font-size:11px;color:#666;background:#fff8e1;border-radius:6px;padding:6px 10px;margin-bottom:8px;">'+
         '🧠 大师推荐池 <b>TOP'+j.candidates.length+'</b> · '+escHtml(j.date||'')+' '+escHtml(j.updated||'')+' · '+
         '🏆最优(≥7分)<b style="color:#c62828;">'+n+'只</b> · 最高分<b style="color:#1a237e;">'+best+'分</b></div>';
+      decorateCandidates();
     });
 }
 setTimeout(loadCandidatePool, 2000);
@@ -1389,6 +1395,7 @@ function refreshHoldings(){
       '<div class="h-row">📈 上涨预估：<b style="color:#2e7d32;" data-edit="'+h.code+':tp" title="点击修改">¥'+tp.toFixed(2)+'（+'+tpPct+'%）</b></div>'+
       '<div class="h-row">🛡 跌停峰值：<b style="color:#c62828;" data-edit="'+h.code+':sl" title="点击修改">¥'+sl.toFixed(2)+'（'+slPct+'%）</b></div>'+
       '<div class="h-pnl" id="pnl_'+h.code+'">--</div>'+
+      '<div class="h-vol" data-volcode="'+h.code+'"></div>'+
       (function(_a,_c,_q,_lp){
         if(!_a){ if(_lp&&_c&&(_lp-_c)*_q<0){ return '<div class="h-advice" style="color:#546e7a;">📌 持有观望：未触发买卖信号，守住止损线¥'+(_c*0.95).toFixed(2)+'</div>'; } return ''; }
         var isSell=_a.advice==='SELL';
@@ -1541,7 +1548,7 @@ function updateStWarn(){
     el.style.color=(m.indexOf('🚨')===0||m.indexOf('🔻')===0)?'#c62828':'#2e7d32';
   });
 }
-function holdTimer(){ refreshHoldings(); updatePnL(); monitorAlerts(); refreshWatch(); refreshRealtime(); updateStWarn(); refreshFundPanel(); }
+function holdTimer(){ refreshHoldings(); updateStWarn(); updateVolPanels(); updatePnL(); monitorAlerts(); refreshWatch(); refreshRealtime(); refreshFundPanel(); }
 setInterval(holdTimer, 2000); // 持仓信息每2秒更新
 setTimeout(holdTimer, 500);  // 页面加载后先刷一次
 // ===== 今日短线推荐目录：每15分钟fetch最新JSON重渲染（确保可买+短线高增长） =====
@@ -1551,6 +1558,212 @@ function hasHolding(code){
   getTrades().forEach(function(t){ if(t.code===code){ q+=t.type==='buy'?t.qty:-t.qty; } });
   return q>0;
 }
+
+// ================= 数据分析引擎（推荐/候选/持仓共用） =================
+// 1) 历史日线（同花顺 JSONP，规避跨域）：返回 [{d,o,h,l,c,v,amt,tr}]，v 单位=手
+var _volCache = {}, _volPending = {};
+function fetchDayVol(code, cb){
+  var c = String(code).replace(/^(sh|sz|SH|SZ)/, '');
+  var hit = _volCache[c];
+  if(hit && (Date.now() - hit.ts < 1800000)) { cb(hit.rows, hit.t); return; }
+  if(_volPending[c]){ cb(null, null); return; }
+  _volPending[c] = 1;
+  var key = 'quotebridge_v6_line_hs_' + c + '_01_last';
+  var s = document.createElement('script');
+  s.src = 'https://d.10jqka.com.cn/v6/line/hs_' + c + '/01/last.js?ts=' + Date.now();
+  s.onload = function(){
+    var rows = null;
+    try{
+      var d = window[key];
+      if(d && d.data){
+        rows = [];
+        var arr = String(d.data).split(';');
+        for(var i=0;i<arr.length;i++){
+          var f = arr[i].split(',');
+          if(f.length < 7) continue;
+          var o = { d:f[0], o:+f[1], h:+f[2], l:+f[3], c:+f[4], v:+f[5], amt:+f[6] };
+          if(isNaN(o.c) || isNaN(o.v)) continue;
+          rows.push(o);
+        }
+      }
+    }catch(e){ rows = null; }
+    try{ delete window[key]; }catch(e){}
+    delete _volPending[c];
+    if(s.parentNode) s.parentNode.removeChild(s);
+    if(rows && rows.length){
+      var t = volTrend(rows);
+      _volCache[c] = { rows:rows, t:t, ts:Date.now() };
+      cb(rows, t);
+    } else cb(null, null);
+  };
+  s.onerror = function(){ delete _volPending[c]; if(s.parentNode) s.parentNode.removeChild(s); cb(null, null); };
+  document.body.appendChild(s);
+}
+function _dayStr(d){ return ''+d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2); }
+// 2) 三日量能趋势：近3日均量 vs 前3日均量；grow=最近两次日环比中放量的次数(0~2)
+function volTrend(rows){
+  if(!rows || rows.length < 7) return null;
+  var today = _dayStr(new Date());
+  var hist = [];
+  for(var i=0;i<rows.length;i++){ if(rows[i].d !== today) hist.push(rows[i]); }
+  hist = hist.slice(-6);
+  if(hist.length < 6){ hist = rows.slice(-6); }
+  if(hist.length < 6) return null;
+  var s3=0, s6=0;
+  for(var j=3;j<6;j++) s3 += hist[j].v;
+  for(var k=0;k<3;k++) s6 += hist[k].v;
+  var a3 = s3/3, p3 = s6/3;
+  var ratio = p3>0 ? a3/p3 : 1;
+  var grow = 0;
+  if(hist[5].v > hist[4].v*1.03) grow++;
+  if(hist[4].v > hist[3].v*1.03) grow++;
+  var trend = ratio>=1.15 ? '放大' : (ratio<=0.92 ? '萎缩' : '持平');
+  return { a3:a3, p3:p3, ratio:ratio, grow:grow, trend:trend, hist:hist };
+}
+// 3) 个股六维评分（量能/换手/日内位置/涨幅位置/内外盘/盈亏比）
+// 数据全部取自实时行情缓存：价、涨幅、量比、换手、振幅、均价、最高、内外盘
+function analyzeStock(code, opt){
+  opt = opt || {};
+  var p = _lastPrice[code];
+  if(!p || isNaN(p)) return null;
+  var chg=_lastChg[code]||0, vr=_lastVol[code]||0, tr=_lastTr[code]||0;
+  var avg=_lastAvg[code]||0, hi=_lastHigh[code]||0, o=_lastO[code]||0, inr=_lastI[code]||0;
+  var score=0, rs=[], rk=[];
+  // ① 量能（量比）
+  if(vr>=2.0){ score+=2; rs.push('量比'+vr.toFixed(2)+'，放量启动'); }
+  else if(vr>=1.2){ score+=1; rs.push('量比'+vr.toFixed(2)+'，量能温和放大'); }
+  else if(vr>0 && vr<0.8){ score-=1.5; rk.push('量比'+vr.toFixed(2)+'，缩量缺动能'); }
+  // ② 换手（活跃度与过热）
+  if(tr>=3 && tr<=15){ score+=1.5; rs.push('换手'+tr.toFixed(1)+'%，交投活跃'); }
+  else if(tr>15 && tr<=20){ score+=0.5; rs.push('换手'+tr.toFixed(1)+'%，偏高'); }
+  else if(tr>20){ score-=1; rk.push('换手'+tr.toFixed(1)+'%，过热易被接力抛压'); }
+  else if(tr>0 && tr<1){ score-=1; rk.push('换手'+tr.toFixed(1)+'%，成交清淡'); }
+  // ③ 日内位置（均价与高点回落）
+  if(avg>0){
+    if(p>avg*1.001){ score+=1; rs.push('站上分时均价'+avg.toFixed(2)+'，日内多方主导'); }
+    else if(p<avg*0.999){ score-=1; rk.push('跌破分时均价'+avg.toFixed(2)+'，日内弱势'); }
+  }
+  if(hi>0){
+    var pb=(hi-p)/hi*100;
+    if(pb>=4){ score-=1; rk.push('距当日高点回落'+pb.toFixed(1)+'%，冲高受阻'); }
+  }
+  // ④ 涨幅位置（追高风险）
+  if(chg>=1 && chg<=5){ score+=1.5; rs.push('涨幅+'+chg.toFixed(1)+'%，温和仍有空间'); }
+  else if(chg>5 && chg<7){ score+=0.5; rs.push('涨幅+'+chg.toFixed(1)+'%'); }
+  else if(chg>=7 && chg<9.4){ score-=1; rk.push('涨幅+'+chg.toFixed(1)+'%，位置偏高有追高风险'); }
+  else if(chg>=9.4){ score-=2; rk.push('涨幅+'+chg.toFixed(1)+'%，接近涨停不宜追'); }
+  else if(chg<0){ score-=1; rk.push('今日'+chg.toFixed(1)+'%，走势偏弱'); }
+  // ⑤ 内外盘（买卖盘力量）
+  if(o>0 && inr>0){
+    if(o>inr*1.2){ score+=1; rs.push('外盘'+(o/10000).toFixed(1)+'万手>内盘'+(inr/10000).toFixed(1)+'万手，买盘主导'); }
+    else if(inr>o*1.2){ score-=1; rk.push('内盘'+(inr/10000).toFixed(1)+'万手>外盘'+(o/10000).toFixed(1)+'万手，卖压偏大'); }
+  }
+  // ⑥ 盈亏比（到止盈空间 / 到止损空间）
+  var tp=parseFloat(opt.tp)||0, sl=parseFloat(opt.sl)||0, rr=0;
+  if(tp>0 && sl>0 && p>sl){
+    rr=(tp-p)/(p-sl);
+    if(p>=tp){ rk.push('现价已到止盈目标'+tp.toFixed(2)+'，不追高'); }
+    else if(rr>=1.8){ score+=1; rs.push('盈亏比'+rr.toFixed(1)+'，风险收益划算'); }
+    else if(rr<1.2){ score-=1; rk.push('盈亏比'+rr.toFixed(1)+'，止损空间大于盈利空间'); }
+  }
+  if(opt.score){ if(opt.score>=8){ score+=0.5; rs.push('大师池评分'+opt.score+'分'); } }
+  var v,col,pos;
+  if(score>=4.5){ v='✅ 建议买入（分批建仓）'; col='#c62828'; pos='先建半仓，回踩不破均价再加'; }
+  else if(score>=2.5){ v='🟡 可关注·等回踩'; col='#f9a825'; pos='不追高，回踩买入区间下沿再进'; }
+  else if(score>=0){ v='⚪ 观望'; col='#546e7a'; pos='信号不足，等量能或资金确认'; }
+  else { v='⛔ 暂不买入'; col='#2e7d32'; pos='风险大于机会，回避为主'; }
+  return { score:score, verdict:v, color:col, reasons:rs, risks:rk, position:pos, rr:rr, p:p };
+}
+function adviceBoxHtml(a){
+  if(!a) return '<div style="font-size:12px;color:#999;padding:4px 0;">📊 数据分析：等待实时行情…</div>';
+  var h='<div style="background:#f5f7ff;border-left:3px solid '+a.color+';border-radius:6px;padding:7px 10px;margin-top:6px;font-size:12px;line-height:1.7;">';
+  h+='<div style="font-weight:800;color:'+a.color+';">📊 数据分析：'+a.verdict+'<span style="float:right;color:#666;font-weight:400;">评分 '+a.score.toFixed(1)+'</span></div>';
+  if(a.reasons.length) h+='<div>✔ '+a.reasons.slice(0,3).join('；')+'</div>';
+  if(a.risks.length) h+='<div style="color:#c62828;">⚠ '+a.risks.slice(0,2).join('；')+'</div>';
+  h+='<div style="color:#1a237e;">💡 操作：'+a.position+'</div></div>';
+  return h;
+}
+// 4) 今日推荐卡片建议刷新
+function updateStockAdvice(){
+  var bs=document.querySelectorAll('.st-advice[data-code]');
+  for(var i=0;i<bs.length;i++){
+    var b=bs[i];
+    b.innerHTML=adviceBoxHtml(analyzeStock(b.getAttribute('data-code'), { tp:b.getAttribute('data-tp'), sl:b.getAttribute('data-sl') }));
+  }
+  var cs=document.querySelectorAll('.cand-advice[data-code]');
+  for(var j=0;j<cs.length;j++){
+    var c=cs[j];
+    c.innerHTML=adviceBoxHtml(analyzeStock(c.getAttribute('data-code'), { tp:c.getAttribute('data-tp'), sl:c.getAttribute('data-sl'), score:parseFloat(c.getAttribute('data-score'))||0 }));
+  }
+}
+// 5) 候选清单卡片：挂上建议容器（按代码匹配 candidates.json 的止盈/止损/评分）
+function decorateCandidates(){
+  var pool=window._pool; if(!pool || !pool.length) return;
+  var map={};
+  for(var i=0;i<pool.length;i++){ map[String(pool[i].code).toLowerCase()]=pool[i]; }
+  var cards=document.querySelectorAll('#tabCand .card');
+  for(var j=0;j<cards.length;j++){
+    var card=cards[j];
+    var codeEl=card.querySelector('.code');
+    if(!codeEl) continue;
+    var code=String(codeEl.textContent||'').trim().toLowerCase();
+    var cc=map[code]; if(!cc) continue;
+    var box=card.querySelector('.cand-advice');
+    if(!box){
+      box=document.createElement('div'); box.className='cand-advice';
+      box.setAttribute('data-code', code);
+      box.setAttribute('data-tp', cc.take_profit||0);
+      box.setAttribute('data-sl', cc.stop_loss||0);
+      box.setAttribute('data-score', cc.score||0);
+      card.appendChild(box);
+    }
+  }
+  updateStockAdvice();
+}
+// 6) 持仓：三日量能 + 第四天预判（缓存优先，卡片每2秒重建可即时回填）
+function volPanelHtml(code, t){
+  if(!t) return '<div style="font-size:12px;color:#999;margin-top:6px;">📦 三日量能：历史量能加载中…</div>';
+  var hs=getHoldings(), h=null;
+  for(var i=0;i<hs.length;i++){ if(String(hs[i].code)===String(code)){ h=hs[i]; break; } }
+  var p=_lastPrice[code]||0, cost=h?(h.cost/h.qty):0;
+  var s=loadHS()[code]||{}, sl=s.sl?parseFloat(s.sl):cost*0.95;
+  var pnlPct=cost>0?((p-cost)/cost*100):0;
+  var col=t.trend==='放大'?'#2e7d32':(t.trend==='萎缩'?'#e65100':'#546e7a');
+  var diff=(t.ratio-1)*100;
+  var line='近3日均 <b>'+(t.a3/10000).toFixed(1)+'万手</b> / 前3日均 <b>'+(t.p3/10000).toFixed(1)+'万手</b>（'+(diff>=0?'+':'')+diff.toFixed(0)+'%）';
+  var judge, jcol, why;
+  var noGrow = (t.grow<=0 && t.ratio<1.05);
+  if(noGrow){
+    if(p>0 && p<=sl){ judge='止损离场'; jcol='#c62828'; why='量能三日不增且已跌破止损线'+sl.toFixed(2)+'，按纪律离场，不加仓不硬扛'; }
+    else if(pnlPct>=2){ judge='建议减半/抛售'; jcol='#e65100'; why='连续三日量能未增长，价格靠惯性维持、缺承接盘，预判次日冲高乏力，先减一半降低风险'; }
+    else if(pnlPct<=-2 && p>sl*1.01){ judge='建议试探加仓'; jcol='#558b2f'; why='量能萎缩到位、回调未破止损线'+sl.toFixed(2)+'，抛压释放，预判有反抽，可试探加半份'; }
+    else { judge='持有观望'; jcol='#546e7a'; why='量能无增长但价格未破位，守止损线'+sl.toFixed(2)+'，不追加'; }
+  } else if(t.trend==='放大'){
+    judge='持有/可加仓'; jcol='#2e7d32'; why='量能持续放大，趋势有承接，浮盈可金字塔加仓';
+  } else {
+    judge='持有观望'; jcol='#546e7a'; why='量能持平，等放量选方向';
+  }
+  return '<div style="font-size:12px;line-height:1.8;margin-top:6px;padding:6px 8px;background:#fafafa;border-radius:6px;">'+
+    '<div><b style="color:'+col+';">📦 三日量能：'+t.trend+'</b> '+line+'（近3日放量'+t.grow+'次）</div>'+
+    '<div>🔮 第四天预判：<b style="color:'+jcol+';">'+judge+'</b> —— '+why+'</div></div>';
+}
+function updateVolPanels(){
+  var els=document.querySelectorAll('.h-vol[data-volcode]');
+  if(!els.length) return;
+  for(var i=0;i<els.length;i++){
+    (function(el){
+      var code=el.getAttribute('data-volcode');
+      var c=String(code).replace(/^(sh|sz|SH|SZ)/,'');
+      var hit=_volCache[c];
+      if(hit){ el.innerHTML=volPanelHtml(code, hit.t); return; }
+      el.innerHTML=volPanelHtml(code, null);
+      fetchDayVol(code, function(rows, t){ el.innerHTML=volPanelHtml(code, t); });
+    })(els[i]);
+  }
+}
+setInterval(updateStockAdvice, 3000);
+setTimeout(updateStockAdvice, 1000);
+
 function renderShortTerm(j){
   var dateTxt=escHtml(j.date||''), tsTxt=escHtml(j.ts||'');
   var html='<div class="card short-term"><div class="card-top"><div class="name">📈 今日短线推荐</div><div class="st-date">'+dateTxt+' 目录更新 '+(tsTxt?tsTxt:'最新')+' · 每15分钟刷新</div></div>';
@@ -1582,6 +1795,7 @@ function renderShortTerm(j){
       '<div class="st-qty">📌 建议买入股数：<b style="color:#c62828;">'+escHtml(s.qty||'--')+'</b></div>'+
       '<div class="st-line">📈 涨值巅峰线：<b style="color:#2e7d32;">'+escHtml(s.take_profit||'--')+'元</b> · 🛡 跌停锋线：<b style="color:#c62828;">'+escHtml(s.stop_loss||'--')+'元</b></div>'+
       '<div class="st-ref">买入区间 <b>'+escHtml(s.buy_range||'--')+'</b> · 止损 <b>'+escHtml(s.stop_loss||'--')+'</b> · 止盈 <b>'+escHtml(s.take_profit||'--')+'</b></div>'+
+      '<div class="st-advice" data-code="'+escHtml(s.code)+'" data-tp="'+escHtml(s.take_profit||'0')+'" data-sl="'+escHtml(s.stop_loss||'0')+'"></div>'+
       '<div class="st-warn" data-stwarn="'+escHtml(s.code)+'" data-tp="'+escHtml(s.take_profit||'0')+'" data-sl="'+escHtml(s.stop_loss||'0')+'"></div>'+
       '<div class="st-ops">'+
       '<button class="st-buy" data-stbuy="1" data-code="'+escHtml(s.code)+'" data-name="'+escHtml(s.name)+'" data-price="'+(isNaN(p)?'0':p)+'" '+(held?'style="opacity:0.5;" title="已持有，可加仓"':'')+'>'+(held?'➕ 已持有·加仓':'📥 买入')+'</button>'+
@@ -1723,6 +1937,34 @@ setInterval(checkAdvice, 15000); // 每15秒重算一次，状态变化立即提
 setTimeout(checkAdvice, 3000);   // 页面加载后先检查一次
 
 // ===== 规则说明面板（点「📖 加仓/抛售规则」查看） =====
+
+// 7) 数据分析逻辑说明面板
+function showDataLogic(){
+  var old=document.getElementById('uiMask'); if(old&&old.parentNode) old.parentNode.removeChild(old);
+  var b='<div style="max-height:58vh;overflow:auto;text-align:left;font-size:13px;line-height:1.85;padding-right:4px;">'+
+  '<div style="color:#1a237e;font-weight:800;">📊 今日推荐 / 候选清单：六维评分</div>'+
+  '① <b>量能（量比）</b>：≥2.0 记 +2（放量启动）；1.2~2.0 记 +1；&lt;0.8 记 -1.5（缩量无动能）<br>'+
+  '② <b>换手</b>：3~15% 记 +1.5（活跃）；15~20% +0.5；&gt;20% 记 -1（过热易被抛）；&lt;1% 记 -1（清淡）<br>'+
+  '③ <b>日内位置</b>：现价站上分时均价 +1；跌破 -1；距当日高点回落≥4% 再 -1<br>'+
+  '④ <b>涨幅位置</b>：+1~5% 记 +1.5（还有空间）；5~7% +0.5；7~9.4% 记 -1（追高风险）；≥9.4% 记 -2（不追涨停）；翻绿 -1<br>'+
+  '⑤ <b>内外盘</b>：外盘&gt;内盘1.2倍 +1（买盘主导）；内盘占优 -1<br>'+
+  '⑥ <b>盈亏比</b>：(止盈-现价)/(现价-止损) ≥1.8 记 +1（划算）；&lt;1.2 记 -1（不划算）<br>'+
+  '候选若自带大师池评分≥8 再 +0.5<br><br>'+
+  '<b>分档结论</b>：≥4.5 → ✅ 建议买入（分批建仓）｜2.5~4.5 → 🟡 可关注·等回踩｜0~2.5 → ⚪ 观望｜&lt;0 → ⛔ 暂不买入<br><br>'+
+  '<div style="color:#1a237e;font-weight:800;">📦 持仓：三日量能 → 第四天预判</div>'+
+  '取近 3 个交易日均量，与前 3 日均量比较（同花顺日线，30分钟缓存）：<br>'+
+  '· 近3日均量 ≥ 前3日 15% → <b style="color:#2e7d32;">放量</b>，趋势有承接<br>'+
+  '· 在 ±8% 内 → <b>持平</b>；≤ -8% → <b style="color:#e65100;">萎缩</b><br>'+
+  '· 连续三日日环比都没有放量（未增长）→ 判定「三天无量能增长」，进入第四天预判：<br>'+
+  '　 • 已跌破止损线 → <b style="color:#c62828;">止损离场</b><br>'+
+  '　 • 浮盈≥2%（>=-1时也算）→ <b style="color:#e65100;">减半/抛售</b>：无量上涨、缺承接，次日冲高乏力<br>'+
+  '　 • 浮亏2~5% 且未破止损 → <b style="color:#558b2f;">试探加仓（半份）</b>：缩量回调、抛压释放，博反抽<br>'+
+  '　 • 其余 → 持有观望，守止损线<br><br>'+
+  '<div style="color:#888;font-size:12px;">数据来源：实时价/量比/换手/均价/内外盘来自腾讯行情（每秒刷新）；历史成交量来自同花顺日线接口（30分钟缓存）。<br>所有结论均为规则化计算，不构成投资建议。</div></div>';
+  var m=document.createElement('div'); m.id='uiMask'; m.className='ui-mask';
+  m.innerHTML='<div class="ui-box"><div class="ui-title">数据分析逻辑</div>'+b+'<div class="ui-btns"><button class="ui-btn ui-btn-ok" onclick="_uiRemove()">知道了</button></div></div>';
+  document.body.appendChild(m);
+}
 function showAdviceRules(){
   var old=document.getElementById('uiMask'); if(old&&old.parentNode) old.parentNode.removeChild(old);
   var body='<div style="max-height:52vh;overflow:auto;text-align:left;font-size:13px;line-height:1.85;padding-right:4px;">'+
