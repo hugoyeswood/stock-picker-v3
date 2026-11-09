@@ -14,7 +14,7 @@
 <style>
   * { box-sizing:border-box; margin:0; padding:0; }
   body { font-family:"Microsoft YaHei", system-ui, sans-serif; background:#f0f2f5;
-         max-width:640px; margin:0 auto; padding:14px; }
+         max-width:640px; margin:0 auto; padding:14px 14px 96px; }
   h1 { font-size:20px; color:#1a237e; margin-bottom:4px; }
   .sub { font-size:12px; color:#777; margin-bottom:12px; }
   .tip { background:#fff8e1; border-left:4px solid #f9a825; border-radius:6px;
@@ -33,8 +33,8 @@
   .h-advice { margin-top:4px; font-size:12px; }
   .card { background:#fff; border-radius:12px; padding:14px; margin-bottom:12px;
           box-shadow:0 1px 4px rgba(0,0,0,.07); }
-  .card-top { display:flex; justify-content:space-between; align-items:flex-start; }
-  .name { font-size:17px; font-weight:bold; }
+  .card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap; }
+  .name { font-size:17px; font-weight:bold; flex:0 0 auto; white-space:nowrap; }
   .code { font-size:11px; color:#999; }
   .score { background:#c62828; color:#fff; border-radius:14px; padding:3px 10px;
            font-weight:bold; font-size:14px; }
@@ -98,7 +98,7 @@
   .trend-row { font-size:13px; }
   .short-term { border:1px solid #ffd54f; }
   .short-term .name { color:#e65100; }
-  .st-date { font-size:11px; color:#999; }
+  .st-date { font-size:11px; color:#999; flex:1 1 100%; text-align:right; margin-top:2px; line-height:1.5; }
   .st-summary { font-size:13px; color:#333; background:#fff8e1; border-radius:6px; padding:7px 10px; margin:6px 0; }
   .st-item { border-top:1px dashed #eee; padding:8px 0; font-size:13px; }
   .st-top { display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
@@ -168,7 +168,7 @@
 (function(){ try{ if(/MicroMessenger/i.test(navigator.userAgent)){ var t=document.getElementById('wxTip'); if(t) t.style.display='block'; } }catch(e){} })();
 </script>
 <h1>今日候选清单 <span class="ver-badge">大师逻辑 V3</span></h1>
-<div class="sub">更新于 2026-11-06 07:40 · 数据源：腾讯 · 当前可用资金 ¥1000.00 <span class="ver-badge">v20261105-V3-ES5·融合V5</span></div>
+<div class="sub">更新于 <span id="pageUpd">加载中…</span> · 数据源：腾讯 · 当前可用资金 ¥<span id="headCash">--</span> <span class="ver-badge">v20261109-V3-ES5·融合V5</span></div>
 <div id="errBanner" class="err-banner"></div>
 <div id="marketStatus" class="market-badge" style="display:none"></div>
 <div class="tip"><b>怎么用：</b>看卡片【状态】——"可买"按【建议买入区间】挂限价单买1手；"等回踩"别追高；"观望"先别碰。<br>
@@ -188,8 +188,8 @@
 <div class="budget-panel" id="fundPanel"></div>
 
 <div class="tab-page active" id="tabRec">
-<div id="stRecContainer"><div class="card short-term">  <div class="card-top"><div class="name">📈 今日短线推荐</div>    <div class="st-date">2026-11-05 目录更新 09:37 · 每15分钟刷新</div></div>  <div class="st-summary"><b>市场综述：</b>隔夜外围（11-04收盘，来源：新华网/财联社）：美股史诗级暴涨——道指+3.03%收53356（狂飙超1500点）、标普+1.58%、纳指+1.44%，微软/苹果/亚马逊大涨5-7%，非必需消费(+4.27%)与金融(+3.46%)领涨；但存储/光通信重挫（美光-7%、希捷-8%、费半-3%），油价暴跌8%、金银大涨（黄金+3.5%）→今日A股回避存储光通信高位分支，科技分化。昨日A股（11-04，来源：证券时报/新浪）：放量大涨——上证+2.16%报3686、深成指+4.22%、创业板+6.40%、科创50+9.92%，成交2.05万亿重返2万亿上方，超4600只上涨、120+只涨停；半导体、通信设备、贵金属、电子元器件、生物科技集体爆发，专精特新大涨近7%。今日消息面（11-05，来源：央行/财联社/上证报）：①央行3000亿买断式逆回购+26家券商第三批互换便利近600亿+回购增持再贷款利率降至1%（两日申报超2000亿）→增量资金持续入场；②进博会开幕（6G/绿色智算/无人驾驶，高通6G原型机首展）；③五部门印发《实施全面节约战略行动方案》利好节能降碳/算力节能/稀贵金属循环；④春节假期延长至9天+免税店政策升级→大消费主线。今日策略：跟随大消费（春节/免税）、专精特新/智能制造、低价电子与新能源补涨主线，优选量能活跃、涨幅温和（未涨停）的低价股；回避外盘重挫的存储/光通信高位分支，不追高已暴涨科技股。</div>  <div class="st-item">  <div class="st-top"><b style="color:#1a237e;">慈文传媒</b>    <span class="st-badge">✓ 可买</span><span class="st-code">002343</span>    <span class="st-price price" data-code="002343" style="color:#c62828;">¥8.51</span> <span class="st-chg chg" data-code="002343">+5.32%</span></div>  <div class="st-reason">✅ 可买理由：影视传媒人气股盘中爆发：量比9.29巨量启动+换手11.5%资金抢筹，短剧/AI影视题材活跃，现价8.51元买得起1手，量能评分居全市场首位，短线弹性大</div>  <div class="st-qty">📌 建议买入股数：<b style="color:#c62828;">1手（100股）</b></div>  <div class="st-line">📈 涨值巅峰线：<b style="color:#2e7d32;">9.36元</b> · 🛡 跌停锋线：<b style="color:#c62828;">8.08元</b></div>  <div class="st-ref">买入区间 <b>8.35~8.65</b> · 止损 <b>8.08</b> · 止盈 <b>9.36</b></div>  <div class="st-warn" data-stwarn="002343" data-tp="8.08" data-sl="9.36"></div>  <div class="st-ops"><button class="st-buy" data-stbuy="1" data-code="002343" data-name="慈文传媒" data-price="8.51">📥 买入</button></div></div><div class="st-item">  <div class="st-top"><b style="color:#1a237e;">东方日升</b>    <span class="st-badge">✓ 可买</span><span class="st-code">300118</span>    <span class="st-price price" data-code="300118" style="color:#c62828;">¥9.04</span> <span class="st-chg chg" data-code="300118">+6.35%</span></div>  <div class="st-reason">✅ 可买理由：光伏组件龙头放量上攻：五部门《实施全面节约战略行动方案》利好节能降碳/新能源，量比19.85倍爆发居板块前列，昨日大涨主线延续，现价9.04元可买1手</div>  <div class="st-qty">📌 建议买入股数：<b style="color:#c62828;">1手（100股）</b></div>  <div class="st-line">📈 涨值巅峰线：<b style="color:#2e7d32;">9.94元</b> · 🛡 跌停锋线：<b style="color:#c62828;">8.59元</b></div>  <div class="st-ref">买入区间 <b>8.85~9.20</b> · 止损 <b>8.59</b> · 止盈 <b>9.94</b></div>  <div class="st-warn" data-stwarn="300118" data-tp="8.59" data-sl="9.94"></div>  <div class="st-ops"><button class="st-buy" data-stbuy="1" data-code="300118" data-name="东方日升" data-price="9.04">📥 买入</button></div></div><div class="st-item">  <div class="st-top"><b style="color:#1a237e;">皇氏集团</b>    <span class="st-badge">✓ 可买</span><span class="st-code">002329</span>    <span class="st-price price" data-code="002329" style="color:#c62828;">¥4.01</span> <span class="st-chg chg" data-code="002329">+6.37%</span></div>  <div class="st-reason">✅ 可买理由：乳业+光伏跨界双题材：量比15.84倍显著放量，低价高弹性（4.01元），大消费(乳制品)+新能源双主线共振，未涨停仍有上冲空间，可买2手</div>  <div class="st-qty">📌 建议买入股数：<b style="color:#c62828;">2手（200股）</b></div>  <div class="st-line">📈 涨值巅峰线：<b style="color:#2e7d32;">4.41元</b> · 🛡 跌停锋线：<b style="color:#c62828;">3.81元</b></div>  <div class="st-ref">买入区间 <b>3.92~4.10</b> · 止损 <b>3.81</b> · 止盈 <b>4.41</b></div>  <div class="st-warn" data-stwarn="002329" data-tp="3.81" data-sl="4.41"></div>  <div class="st-ops"><button class="st-buy" data-stbuy="1" data-code="002329" data-name="皇氏集团" data-price="4.01">📥 买入</button></div></div>  <div class="st-note">⚠️ ⚠️ 模拟交易仅记录本地，不连接券商，不构成投资建议；短线风险高，控制仓位。资金约1000元建议任选2只各1手（如通程控股505元+雪榕生物431元≈936元），勿满仓单一标的；存储/光通信今日回避。</div></div></div>
-</div>
+<div id="stRecContainer"><div class="card short-term"><div class="card-top"><div class="name">📈 今日短线推荐</div><div class="st-date">正在加载今日目录…</div></div><div class="st-summary">🔄 正在从云端拉取今日推荐目录（含市场综述与三只短线标的）。<br>若长时间空白，点右下角「手动刷新」，或稍后重试。</div></div></div>
+
 <div class="tab-page" id="tabCand">
   <div id="poolMeta"></div>
   <div style="display:flex;gap:8px;margin:2px 0 10px;flex-wrap:wrap;">
@@ -953,7 +953,16 @@ function calcTodayPnL(){ var tk=todayKey(), pnl=0;
 function calcFund(){ var mv=0; getHoldings().forEach(function(h){ mv+=(_lastPrice[h.code]||0)*h.qty; }); var cash=getBudget(), principal=getPrincipal(), total=cash+mv; return { cash:cash, principal:principal, mv:mv, total:total, totalPnl:total-principal, todayPnl:calcTodayPnL() }; }
 function pnlClass(v,kind){ if(v>0) return kind==='today'?'fp-gold':'fp-blackgold'; if(v<0) return 'fp-darkgreen'; return ''; }
 function pnlTxt(v){ return (v>0?'+':'')+v.toFixed(2)+'元'; }
-function refreshFundPanel(){ var el=document.getElementById('fundPanel'); if(!el) return; var f=calcFund(); var h='';
+// ===== 顶部"更新于/可用资金"动态化（原先写死 2026-11-06 07:40 / ¥1000.00，与实际资金面板矛盾）=====
+function refreshHeadMeta(){
+  try{
+    var up=document.getElementById('pageUpd');
+    if(up && window.__dataUpdated) up.textContent=String(window.__dataUpdated);
+    var hc=document.getElementById('headCash');
+    if(hc && typeof getBudget==='function') hc.textContent=(+getBudget()).toFixed(2);
+  }catch(e){}
+}
+function refreshFundPanel(){ refreshHeadMeta(); var el=document.getElementById('fundPanel'); if(!el) return; var f=calcFund(); var h='';
   h+='<div class="fp-row fp-total"><span class="fp-lab">总资产（现金+持仓）</span><span class="fp-val">¥'+f.total.toFixed(2)+'</span></div>';
   h+='<div class="fp-row"><span class="fp-lab">本金</span><span class="fp-val" onclick="editPrincipal()" title="点击编辑本金">¥'+f.principal.toFixed(2)+'</span></div>';
   h+='<div class="fp-row"><span class="fp-lab">可用资金</span><span class="fp-val" onclick="editBudget()" title="点击编辑可用资金">¥'+f.cash.toFixed(2)+'</span></div>';
@@ -1875,6 +1884,7 @@ function manualRefreshAll(){
   try{ refreshShortTerm(); }catch(e){}
   try{ if(typeof refreshHoldings==='function') refreshHoldings(); }catch(e){}
   try{ if(typeof refreshRealtime==='function') refreshRealtime(); }catch(e){}
+  try{ refreshHeadMeta(); }catch(e){}
   try{ if(typeof refreshFundPanel==='function') refreshFundPanel(); }catch(e){}
   setTimeout(function(){
     if(b){ b.style.opacity='1'; b.textContent='🔄 手动刷新'; }
@@ -1886,7 +1896,7 @@ function manualRefreshAll(){
     if(document.getElementById('manualRefreshBtn')) return;
     var b=document.createElement('button');
     b.id='manualRefreshBtn'; b.type='button'; b.textContent='🔄 手动刷新';
-    b.style.cssText='position:fixed;right:14px;bottom:92px;z-index:9998;padding:11px 16px;border-radius:24px;border:none;background:linear-gradient(135deg,#1a237e,#3949ab);color:#fff;font-size:14px;font-weight:bold;box-shadow:0 4px 14px rgba(26,35,126,.35);cursor:pointer;';
+    b.style.cssText='position:fixed;right:12px;bottom:72px;z-index:9998;padding:8px 12px;border-radius:20px;border:none;background:linear-gradient(135deg,#1a237e,#3949ab);color:#fff;font-size:12px;font-weight:bold;box-shadow:0 3px 10px rgba(26,35,126,.3);cursor:pointer;opacity:.95;';
     b.onclick=manualRefreshAll;
     document.body.appendChild(b);
   }
@@ -2119,6 +2129,15 @@ function sellAll(code,name,price){
   });
 }
 
+// 顶部更新时间：读 data.json 的 updated 字段（失败则退回推荐目录 ts）
+(function(){
+  function set(up){ window.__dataUpdated=up; try{ refreshHeadMeta(); }catch(e){} }
+  try{
+    var x=new XMLHttpRequest(); x.open('GET','./data.json?ts='+new Date().getTime(),true); x.timeout=12000;
+    x.onload=function(){ try{ var d=JSON.parse(x.responseText); if(d&&d.updated) set(d.updated); }catch(e){} };
+    x.send();
+  }catch(e){}
+})();
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261106'); }
 </script>
 <script src="./update-check.js" data-page-upd="2026-11-06 07:40"></script>

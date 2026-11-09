@@ -31,6 +31,24 @@ def main() -> int:
     print("[2/3] 还原已修版 index.html（不采用 build_site.py 生成的旧模板）", flush=True)
     shutil.copyfile(PATCHED, BASE / "index.html")
 
+    # 把页面里的 data-page-upd 按本次 data.json 的 updated 注入，
+    # 否则 update-check.js 永远判定"页面过期"，会陷入反复自动刷新。
+    import json as _json
+    import re as _re
+    updated = ""
+    try:
+        updated = str(_json.loads((BASE / "data.json").read_text(encoding="utf-8")).get("updated", ""))
+    except Exception as exc:
+        print("读取 data.json.updated 失败：%s" % exc, flush=True)
+    html_path = BASE / "index.html"
+    html = html_path.read_text(encoding="utf-8")
+    if updated:
+        html, n = _re.subn(r'data-page-upd="[^"]*"', 'data-page-upd="%s"' % updated, html)
+    else:
+        n = 0
+    html_path.write_text(html, encoding="utf-8")
+    print("[2/3] 已注入 data-page-upd=%s（%d 处）" % (updated or "空", n), flush=True)
+
     data = BASE / "data.json"
     cand = BASE / "candidates.json"
     print("[3/3] 产物：data.json=%d B, candidates.json=%d B, index.html=%d B"
