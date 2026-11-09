@@ -189,6 +189,7 @@
 
 <div class="tab-page active" id="tabRec">
 <div id="stRecContainer"><div class="card short-term"><div class="card-top"><div class="name">📈 今日短线推荐</div><div class="st-date">正在加载今日目录…</div></div><div class="st-summary">🔄 正在从云端拉取今日推荐目录（含市场综述与三只短线标的）。<br>若长时间空白，点右下角「手动刷新」，或稍后重试。</div></div></div>
+</div>
 
 <div class="tab-page" id="tabCand">
   <div id="poolMeta"></div>
@@ -907,7 +908,7 @@
 <div class="card holdings">
   <div class="card-top"><div class="name">📊 我的持仓 · 实时跟进</div><div class="st-date">每2秒实时重算 · 触发即提醒</div></div>
   <div class="h-alert" id="alertBar" style="display:none"></div>
-  <div class="h-toolbar"><button onclick="enableNotify()" class="h-notify">🔔 开启预警通知</button><button onclick="showAdviceRules()" class="h-notify" style="background:#1a237e;">📖 加仓/抛售规则</button><button onclick="showMonthReport()" class="h-notify" style="background:#e65100;">📊 本月持仓报告</button><button onclick="exportBackup()" class="h-bak">💾 备份数据</button><button onclick="importBackup()" class="h-bak" style="background:#455a64;">♻️ 恢复数据</button><span class="h-tip">点击数值可修改上涨预估/跌停峰值</span></div>
+  <div class="h-toolbar"><button onclick="enableNotify()" class="h-notify">🔔 开启预警通知</button><button onclick="showAdviceRules()" class="h-notify" style="background:#1a237e;">📖 加仓/抛售规则</button><button onclick="showMonthReport()" class="h-notify" style="background:#e65100;">📊 本月持仓报告</button><button onclick="exportBackup()" class="h-bak">💾 备份数据</button><button onclick="importBackup()" class="h-bak" style="background:#455a64;">♻️ 恢复数据</button><button onclick="showCloudBackup()" class="h-bak" style="background:#00838f;">☁️ 云备份</button><span class="h-tip">点击数值可修改上涨预估/跌停峰值</span></div>
   <div id="holdingsList"><div class="h-empty">暂无持仓：搜索买入后自动实时跟进</div></div>
   <div class="h-hint">⚠️ 实时监控：现价每秒更新 → 建议每2秒重算 → 触发立即弹提醒（紧急10分钟 / 普通15分钟冷却，不重复骚扰）；模拟交易仅记录本地，不构成投资建议</div>
 </div>
@@ -976,7 +977,7 @@ function calcFee(amount,type){ var c=Math.max(amount*0.00025,5); var t=amount*0.
 
 // ===== 交易记录（存本地，双键冗余防丢失） =====
 function getTrades(){ try{ var v=JSON.parse(localStorage.getItem('myTrades')||''); if(Array.isArray(v)) return v; }catch(e){} try{ var b=JSON.parse(localStorage.getItem('myTrades_bak')||''); if(Array.isArray(b)) return b; }catch(e){} return []; }
-function saveTrades(t){ var s=JSON.stringify(t); localStorage.setItem('myTrades', s); try{ localStorage.setItem('myTrades_bak', s); }catch(e){} }
+function saveTrades(t){ var s=JSON.stringify(t); localStorage.setItem('myTrades', s); try{ localStorage.setItem('myTrades_bak', s); }catch(e){} try{ cloudAuto(); }catch(e){} }
 // ===== 数据备份/恢复（防浏览器清空丢失持仓） =====
 function exportBackup(){
   var p={trades:getTrades(), budget:getBudget(), principal:getPrincipal(), hs:loadHS(), alerts:loadAlerts(), adv:localStorage.getItem('myAdviceHour')||'', ver:1, ts:new Date().toLocaleString('zh-CN')};
@@ -984,6 +985,107 @@ function exportBackup(){
   if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(s).then(function(){ uiAlert('✅ 备份已复制到剪贴板！\n请粘贴保存到记事本/备忘录（含全部交易记录、资金、本金、预警设置）。\n数据丢失时用「恢复数据」粘贴回来。'); }).catch(function(){ uiPrompt('✅ 备份数据（请复制保存）：', s, function(){}); }); }
   else{ uiPrompt('✅ 备份数据（请复制保存）：', s, function(){}); }
 }
+// ===== 云备份：端到端加密（口令派生 AES-GCM 密钥），密文发到本人 QQ 邮箱 =====
+var CLOUD_EMAIL='513512243@qq.com';
+function _cb64(buf){ var b=new Uint8Array(buf), s=''; for(var i=0;i<b.length;i++) s+=String.fromCharCode(b[i]); return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+function _ub64(s){ s=String(s||'').replace(/-/g,'+').replace(/_/g,'/'); while(s.length%4) s+='='; var bin=atob(s), a=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return a; }
+function _encKey(pw){
+  return crypto.subtle.importKey('raw', new TextEncoder().encode(String(pw)), {name:'PBKDF2'}, false, ['deriveKey']).then(function(base){
+    return crypto.subtle.deriveKey({name:'PBKDF2', salt:new TextEncoder().encode('sp-v3-cloud-salt-2026'), iterations:150000, hash:'SHA-256'}, base, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+  });
+}
+function cloudEncrypt(pw, obj){
+  return _encKey(pw).then(function(k){
+    var iv=crypto.getRandomValues(new Uint8Array(12));
+    return crypto.subtle.encrypt({name:'AES-GCM', iv:iv}, k, new TextEncoder().encode(JSON.stringify(obj))).then(function(ct){ return _cb64(iv)+'.'+_cb64(ct); });
+  });
+}
+function cloudDecrypt(pw, blob){
+  var parts=String(blob||'').trim().split('.');
+  if(parts.length!==2 || parts[0].length<16) return Promise.reject(new Error('密文格式不对'));
+  return _encKey(pw).then(function(k){
+    return crypto.subtle.decrypt({name:'AES-GCM', iv:_ub64(parts[0])}, k, _ub64(parts[1])).then(function(pt){ return JSON.parse(new TextDecoder().decode(pt)); });
+  });
+}
+function cloudPayload(){
+  return {ver:1, saved:new Date().toLocaleString('zh-CN'), trades:getTrades(), budget:getBudget(), principal:getPrincipal(), hs:loadHS(), alerts:loadAlerts()};
+}
+function cloudUpload(pw){
+  return cloudEncrypt(pw, cloudPayload()).then(function(blob){
+    return fetch('https://formsubmit.co/ajax/'+CLOUD_EMAIL, {method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'},
+      body:JSON.stringify({'_subject':'[股票助手] 自动备份 '+new Date().toLocaleString('zh-CN'), cipher:blob, saved:new Date().toLocaleString('zh-CN')})})
+      .then(function(r){ return r.json(); })
+      .then(function(j){ if(j && j.success===false) throw new Error(j.message||'上传失败'); return blob; });
+  });
+}
+var _cloudTimer=null;
+function cloudAuto(){
+  try{
+    if(localStorage.getItem('myCloudOn')!=='1') return;
+    var pw=localStorage.getItem('myCloudPw'); if(!pw) return;
+    if(_cloudTimer) clearTimeout(_cloudTimer);
+    _cloudTimer=setTimeout(function(){ cloudUpload(pw).then(function(blob){ try{ uiAlert('☁️ 已自动备份到邮箱'); }catch(e){} }).catch(function(e){}); }, 8000);
+  }catch(e){}
+}
+function applyCloudData(p){
+  if(!p||!Array.isArray(p.trades)) throw new Error('备份内容无效');
+  saveTrades(p.trades);
+  if(typeof p.budget==='number' && p.budget>0) setBudget(p.budget);
+  if(typeof p.principal==='number' && p.principal>0) setPrincipal(p.principal);
+  if(p.hs && typeof p.hs==='object') saveHS(p.hs);
+  if(p.alerts && typeof p.alerts==='object') saveAlerts(p.alerts);
+  try{ refreshHoldings(); refreshFundPanel(); }catch(e){}
+}
+function showCloudBackup(){
+  var old=document.getElementById('uiMask'); if(old&&old.parentNode) old.parentNode.removeChild(old);
+  var curPw=localStorage.getItem('myCloudPw')||'';
+  var on=localStorage.getItem('myCloudOn')==='1';
+  var mask=document.createElement('div'); mask.id='uiMask'; mask.className='ui-mask';
+  mask.innerHTML='<div class="ui-box" style="max-width:92%;width:420px;text-align:left;">'
+    +'<div class="ui-title">☁️ 云备份（换设备不丢数据）</div>'
+    +'<div style="font-size:13px;line-height:1.7;color:#333;">'
+    +'备份会<b>端到端加密后发到你的QQ邮箱</b>（'+CLOUD_EMAIL+'），邮箱里是一串密文，没有口令谁也解不开。<br>'
+    +'新设备/新APP打开本页 → 点「云备份」→ 粘贴最新一封邮件里的密文即可恢复。<br>'
+    +'<b>备份口令</b>（自己设一个，务必记住）：<br>'
+    +'<input id="cbPw" type="text" value="'+curPw+'" placeholder="例如 hongrun2026" style="width:96%;padding:8px;margin:6px 0;border:1px solid #ccc;border-radius:6px;box-sizing:border-box;">'
+    +'<div style="margin-top:4px;">'
+    +'<button onclick="cbUpload()" style="padding:8px 10px;margin:2px;border:none;border-radius:6px;background:#00838f;color:#fff;font-size:13px;">📤 立即备份到邮箱</button>'
+    +'<button onclick="cbRestore()" style="padding:8px 10px;margin:2px;border:none;border-radius:6px;background:#1a237e;color:#fff;font-size:13px;">📥 从密文恢复</button>'
+    +'<button onclick="cbToggle()" style="padding:8px 10px;margin:2px;border:none;border-radius:6px;background:'+(on?'#2e7d32':'#999')+';color:#fff;font-size:13px;">自动备份：'+(on?'开':'关')+'</button>'
+    +'</div>'
+    +'<div id="cbMsg" style="margin-top:8px;color:#555;font-size:12px;line-height:1.6;">当前：'+(on?'自动备份已开启（改完交易8秒后自动上传）':'自动备份已关闭')+'。首封邮件需点里面的激活链接，之后才会真正收到。</div>'
+    +'</div>'
+    +'<div class="ui-btns"><button class="ui-btn ui-btn-ok" onclick="_uiRemove()">关闭</button></div>'
+    +'</div>';
+  document.body.appendChild(mask);
+}
+
+function cbPw(){ return (document.getElementById('cbPw')||{}).value||''; }
+function cbUpload(){
+  var pw=cbPw(); if(pw.length<4){ alert('口令太短'); return; }
+  localStorage.setItem('myCloudPw', pw);
+  var msg=document.getElementById('cbMsg'); if(msg) msg.textContent='📤 正在发送…';
+  cloudUpload(pw).then(function(blob){
+    if(msg) msg.innerHTML='✅ 已发送！去QQ邮箱看新邮件（主题「[股票助手] 自动备份…」），首封点里面的 Activate 链接。<br>密文开头：'+blob.slice(0,24)+'…';
+  }).catch(function(e){ if(msg) msg.textContent='❌ 失败：'+(e&&e.message?e.message:e)+'（若是首次使用，去邮箱点激活链接后重试）'; });
+}
+function cbRestore(){
+  var pw=cbPw(); if(pw.length<4){ alert('先填备份口令'); return; }
+  localStorage.setItem('myCloudPw', pw);
+  var txt=prompt('把最新一封备份邮件正文里那串密文（形如 xxxx.yyyy 的一长串）粘贴进来：');
+  if(!txt) return;
+  var m=txt.match(/[A-Za-z0-9_\-]{16,}\.[A-Za-z0-9_\-]{16,}/); if(!m){ alert('没找到密文，请确认粘贴完整'); return; }
+  cloudDecrypt(pw, m[0]).then(function(p){
+    applyCloudData(p);
+    uiAlert('✅ 恢复成功！\n备份时间：'+(p.saved||'未知')+'\n交易记录 '+(p.trades?p.trades.length:0)+' 笔，已载入本设备。');
+  }).catch(function(e){ alert('❌ 解密失败：口令不对或密文损坏（'+(e&&e.message?e.message:e)+'）'); });
+}
+function cbToggle(){
+  var on=localStorage.getItem('myCloudOn')==='1';
+  localStorage.setItem('myCloudOn', on?'0':'1');
+  showCloudBackup();
+}
+
 function importBackup(){
   uiPrompt('请粘贴备份数据（JSON）：', '', function(s){ if(!s) return;
   var p; try{ p=JSON.parse(s); }catch(e){ uiAlert('❌ 备份数据格式无效，无法恢复'); return; }
@@ -993,6 +1095,7 @@ function importBackup(){
   if(typeof p.principal==='number' && p.principal>0) setPrincipal(p.principal);
   if(p.hs && typeof p.hs==='object') saveHS(p.hs);
   if(p.alerts && typeof p.alerts==='object') saveAlerts(p.alerts);
+
   uiAlert('✅ 数据恢复成功！\n已恢复交易记录 '+(p.trades||[]).length+' 条。\n持仓与资金面板已刷新。');
   refreshHoldings(); refreshFundPanel(); refreshWatch();
   });
