@@ -2590,7 +2590,7 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-
     try{ refreshHoldings(); refreshFundPanel(); if(window.__refreshWeekly) window.__refreshWeekly(); }catch(e){}
     return true;
   }
-  function pull(silent){
+  function pull(silent,mode){
     var t=topic(); if(!t) return;
     fetch('https://ntfy.sh/'+t+'/json?poll=1&since=12h')
       .then(function(r){ return r.text(); })
@@ -2600,6 +2600,11 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-
           if(!line.trim()) return;
           try{ var o=JSON.parse(line); if(o.event==='message'&&o.message){ var p=JSON.parse(o.message); if(p&&p.at&&(!last||p.at>last.at)) last=p; } }catch(e){}
         });
+        if(mode==='bind'){
+          if(last && (last.at||0) >= localAt()){ if(apply(last)) msg('已从线上拉取最新持仓（'+new Date(last.at).toLocaleString('zh-CN')+'）'); state('在线 · 已绑定','#2e7d32'); }
+          else { push(); msg('已把本机持仓上传到线上，其他设备用同一同步码即可看到。'); }
+          return;
+        }
         if(last && last.at>localAt()){ if(apply(last)) msg('已从线上拉取最新持仓（'+new Date(last.at).toLocaleString('zh-CN')+'）'); }
         else if(!silent) msg('线上已是最新（本机最后同步 '+new Date(localAt()||0).toLocaleString('zh-CN')+'）');
         state('在线 · '+new Date().toTimeString().slice(0,8),'#2e7d32');
@@ -2624,7 +2629,7 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-
       if(c.length<6){ msg('同步码至少 6 位，建议字母+数字，例如 jihongrun2026'); return; }
       localStorage.setItem('spCloudCode', c);
       btn.textContent='已开启（点击关闭）'; btn.style.background='#2e7d32';
-      push(); start();
+      pull(false,'bind'); start();
     };
     window.__bumpCloudBtn=function(){ btn.textContent=topic()?'已开启（点击关闭）':'开启'; btn.style.background=topic()?'#2e7d32':'#1a237e'; };
   }
