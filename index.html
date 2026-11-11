@@ -1315,6 +1315,7 @@ function normCode(c){
 
 function pf(c){ try{ return normCode(c); }catch(e){ return c; } }  // 代码前缀化（原先未定义导致每秒刷新第一只后就中断）
 function refreshRealtime(){
+  if(document.hidden) return; // 后台不轮询
   var codes = [];
   document.querySelectorAll('.price[data-code]').forEach(function(el){ var c=el.getAttribute('data-code'); if(codes.indexOf(c)<0) codes.push(c); });
   var wl=collectWatchCodes(); wl.forEach(function(x){ if(codes.indexOf(x.code)<0) codes.push(x.code); });
@@ -1361,8 +1362,15 @@ setInterval(stTick, 1000); stTick();
 window.__rtTimer = setInterval(refreshRealtime, 1000); // 每支股票每秒更新现价
 // 省电：页面切后台暂停轮询，回到前台立即补刷一次（前台行为不变）
 document.addEventListener('visibilitychange', function(){
-  if(document.hidden){ if(window.__rtTimer){ clearInterval(window.__rtTimer); window.__rtTimer = null; } }
-  else { if(!window.__rtTimer){ window.__rtTimer = setInterval(refreshRealtime, 1000); } refreshRealtime(); }
+  if(document.hidden){
+    if(window.__rtTimer){ clearInterval(window.__rtTimer); window.__rtTimer = null; }
+    if(window.__holdTimer){ clearInterval(window.__holdTimer); window.__holdTimer = null; }
+  } else {
+    if(!window.__rtTimer){ window.__rtTimer = setInterval(refreshRealtime, 1000); }
+    if(!window.__holdTimer){ window.__holdTimer = setInterval(holdTimer, 2000); }
+    refreshRealtime();
+    try{ holdTimer(); }catch(e){}
+  }
 });
 setTimeout(refreshRealtime, 300);    // 页面加载后先刷一次
 
@@ -1702,7 +1710,7 @@ function updateStWarn(){
   });
 }
 function holdTimer(){ refreshHoldings(); updateStWarn(); updateVolPanels(); updatePnL(); monitorAlerts(); refreshWatch(); refreshRealtime(); refreshFundPanel(); }
-setInterval(holdTimer, 2000); // 报价跟随每秒刷新
+window.__holdTimer = setInterval(holdTimer, 2000); // 报价跟随
 setInterval(function(){ refreshHoldings(); refreshFundPanel(); updatePnL(); }, 60000); // 持仓面板每分钟整体刷新
 setTimeout(holdTimer, 500);  // 页面加载后先刷一次
 // ===== 今日短线推荐目录：每15分钟fetch最新JSON重渲染（确保可买+短线高增长） =====
