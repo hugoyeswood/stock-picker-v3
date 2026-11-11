@@ -1,11 +1,16 @@
 {
-  "available": 1000.0,
+  "available": 10000.0,
   "currency": "CNY",
   "ledger": [
     {
       "date": "2026-10-31",
       "amount": 1000.0,
       "note": "初始转入"
+    },
+    {
+      "date": "2026-11-11",
+      "amount": 9000.0,
+      "note": "本金调整至10000元"
     }
   ]
 }
