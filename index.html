@@ -2514,16 +2514,20 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-
     if(!hs.length){ el.innerHTML='<div style="color:#888;">暂无持仓。买入后这里只统计你实际持有的产品盈亏。</div>'; return; }
     var costAll=0, mvAll=0, today=0, week=0, rows='';
     hs.forEach(function(x){
-      var p=px(x.code)||(x.cost/x.qty), pc=prev(x.code)||p;
-      var avg=x.cost/x.qty, cost=x.cost, mv=p*x.qty, pnl=mv-cost;
-      costAll+=cost; mvAll+=mv; today+=(p-pc)*x.qty;
-      if(base.base[x.code]===undefined) base.base[x.code]=p;
-      week+=(p-base.base[x.code])*x.qty;
+      var raw=px(x.code), avg=x.cost/x.qty, p=raw||avg, pc=prev(x.code)||p;
+      var cost=x.cost, mv=p*x.qty, pnl=mv-cost;
+      costAll+=cost; mvAll+=mv; today+=raw?((p-pc)*x.qty):0;
+      var wkCell='<span style="color:#999;">--</span>';
+      if(raw>0){
+        if(base.base[x.code]===undefined) base.base[x.code]=raw;   // 行情就绪后才记基线，避免把成本价当周初价
+        var wv=(raw-base.base[x.code])*x.qty; week+=wv;
+        wkCell='<span style="color:'+(wv>=0?'#c62828':'#2e7d32')+';">'+money(wv)+'</span>';
+      }
       var c=pnl>=0?'#c62828':'#2e7d32';
       rows+='<div style="padding:3px 0;border-bottom:1px dashed #eee;">'
         +'<div style="display:flex;justify-content:space-between;"><span>'+x.name+' <span style="color:#999;">'+x.code+'</span> · '+x.qty+'股 @'+f2(avg)+' 现'+f2(p)+'</span>'
         +'<b style="color:'+c+';">'+money(pnl)+' ('+(cost?f2(pnl/cost*100):'0.00')+'%)</b></div>'
-        +'<div style="color:#888;font-size:11px;">本周 '+money((p-base.base[x.code])*x.qty)+' · 今日 '+money((p-pc)*x.qty)+'</div></div>';
+        +'<div style="color:#888;font-size:11px;">本周 '+wkCell+' · 今日 '+(raw?money((p-pc)*x.qty):'--')+'</div></div>';
     });
     localStorage.setItem('spWkBase', JSON.stringify(base));
     var wkPct=week/TARGET*100, col=wkPct>=100?'#2e7d32':(wkPct>=0?'#ef6c00':'#c62828');
