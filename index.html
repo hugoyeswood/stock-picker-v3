@@ -1358,7 +1358,12 @@ function refreshRealtime(){
 }
 function stTick(){ var e=document.getElementById('stLive'); if(e){ var d=new Date(); e.textContent=(d.getHours()<10?'0':'')+d.getHours()+':'+(d.getMinutes()<10?'0':'')+d.getMinutes()+':'+(d.getSeconds()<10?'0':'')+d.getSeconds(); } }
 setInterval(stTick, 1000); stTick();
-setInterval(refreshRealtime, 1000); // 每支股票每秒更新现价
+window.__rtTimer = setInterval(refreshRealtime, 1000); // 每支股票每秒更新现价
+// 省电：页面切后台暂停轮询，回到前台立即补刷一次（前台行为不变）
+document.addEventListener('visibilitychange', function(){
+  if(document.hidden){ if(window.__rtTimer){ clearInterval(window.__rtTimer); window.__rtTimer = null; } }
+  else { if(!window.__rtTimer){ window.__rtTimer = setInterval(refreshRealtime, 1000); } refreshRealtime(); }
+});
 setTimeout(refreshRealtime, 300);    // 页面加载后先刷一次
 
 // ===== K线图（canvas高清适配 devicePixelRatio） =====
