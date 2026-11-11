@@ -2508,7 +2508,7 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-
         +'<span>'+p.name+' <span style="color:#999;">'+p.code+'</span> · '+p.shares+'股 @'+p.entry.toFixed(2)+' 现'+((p.close||p.entry).toFixed(2))+'</span>'
         +'<b style="color:'+c+';">'+money(p.pnl)+' ('+p.pct.toFixed(2)+'%)</b></div>';
     }).join('');
-    b.innerHTML='<div style="margin-bottom:6px;color:#333;">本周周四至周五跟踪 <b>'+(d.days_tracked||0)+'</b> 个交易日 · 投入 <b>¥'+(d.cost||0).toFixed(2)+'</b> · '
+    b.innerHTML='<div style="margin-bottom:6px;color:#333;">本周已跟踪 <b>'+(d.days_tracked||0)+'</b> 个交易日 · 投入 <b>¥'+(d.cost||0).toFixed(2)+'</b> · '
       +'市值 <b>¥'+(d.market_value||0).toFixed(2)+'</b></div>'
       +'<div style="margin:6px 0;"><div style="height:8px;background:#eee;border-radius:4px;overflow:hidden;"><div style="width:'+bar+'%;height:8px;background:'+col+';"></div></div></div>'
       +'<div style="margin-bottom:6px;">'+(d.week_closed?'已实现':'浮动')+'盈亏：<b style="color:'+col+';">'+money(d.total_pnl||0)+'</b> / 目标 +¥'+(d.target||200)+' · 完成 <b>'+pct.toFixed(1)+'%</b></div>'
