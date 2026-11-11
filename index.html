@@ -1317,6 +1317,7 @@ function refreshRealtime(){
   var codes = [];
   document.querySelectorAll('.price[data-code]').forEach(function(el){ var c=el.getAttribute('data-code'); if(codes.indexOf(c)<0) codes.push(c); });
   var wl=collectWatchCodes(); wl.forEach(function(x){ if(codes.indexOf(x.code)<0) codes.push(x.code); });
+  getHoldings().forEach(function(h){ if(h&&h.code&&codes.indexOf(h.code)<0) codes.push(h.code); });
   if(!codes.length) return;
   var m = getPriceMap();
   var req = [], orig = {};
@@ -1636,8 +1637,7 @@ function collectWatchCodes(){
     var b=top.querySelector('b'), sc=top.querySelector('.st-code');
     if(b&&sc){ var c=(sc.textContent||'').trim(); if(c&&!codes[c]) codes[c]=b.textContent||c; }
   });
-  var hs=getHoldings();
-  hs.forEach(function(h){ delete codes[h.code]; });
+  var hs=getHoldings();  // 持仓股必须保留在行情请求列表里，否则现价/市值/盈亏全空白
   var out=[];
   for(var c in codes){ out.push({code:c,name:codes[c]}); }
   return out.slice(0,20);
