@@ -2297,7 +2297,7 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
-  var HKEY = 'spV3TrackV2';
+  var HKEY = 'spV3TrackV3';
   var hist = null;            // [{date, stocks:[{code,name,entry,shares,stop,tp,qty,close}]}]
   var server = null;          // track_rec.json
   var recToday = null;        // short_term_rec.json
@@ -2337,7 +2337,7 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-
       if(has && has.stocks && has.stocks.map(function(s){return s.code;}).join(',')===sig){
         has.stocks.forEach(function(s){
           var r = recToday.stocks.filter(function(x){ return x.code===s.code; })[0];
-          if(r){ s.name=r.name; s.entry=r.price; s.shares=sharesOf(r.qty); s.stop=r.stop_loss; s.tp=r.take_profit; s.qty=r.qty; }
+          if(r){ s.name=r.name; if(!s.entry) s.entry=r.price; s.shares=sharesOf(r.qty); s.stop=r.stop_loss; s.tp=r.take_profit; s.qty=r.qty; }
         });
         save(); return;
       }
