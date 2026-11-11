@@ -2485,4 +2485,48 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-
 })();
 
 </script>
+
+<div class="card" id="weeklyCard" style="margin-top:12px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+    <b style="font-size:15px;">💼 本周模拟账户</b><span id="wkUpd" style="font-size:11px;color:#888;">—</span>
+  </div>
+  <div style="font-size:12px;color:#555;margin-bottom:8px;">预算 <b>¥1000</b> · 目标 <b style="color:#c62828;">+¥200 / 周</b> · 模拟账户，不连券商</div>
+  <div id="weeklyBody" style="font-size:12px;color:#666;">加载中…</div>
+</div>
+<script>
+(function(){
+  var URL='weekly_account.json';
+  function money(v){ return (v>=0?'+':'-')+'¥'+Math.abs(v).toFixed(2); }
+  function render(d){
+    var b=document.getElementById('weeklyBody'); if(!b) return;
+    document.getElementById('wkUpd').textContent=(d.updated||'')+' 更新';
+    var pct=d.progress_pct||0, col=pct>=100?'#2e7d32':(pct>=0?'#ef6c00':'#c62828');
+    var bar=Math.max(0,Math.min(100,pct));
+    var rows=(d.positions||[]).map(function(p){
+      var c=p.pnl>=0?'#c62828':'#2e7d32';
+      return '<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dashed #eee;">'
+        +'<span>'+p.name+' <span style="color:#999;">'+p.code+'</span> · '+p.shares+'股 @'+p.entry.toFixed(2)+' 现'+((p.close||p.entry).toFixed(2))+'</span>'
+        +'<b style="color:'+c+';">'+money(p.pnl)+' ('+p.pct.toFixed(2)+'%)</b></div>';
+    }).join('');
+    b.innerHTML='<div style="margin-bottom:6px;color:#333;">本周周四至周五跟踪 <b>'+(d.days_tracked||0)+'</b> 个交易日 · 投入 <b>¥'+(d.cost||0).toFixed(2)+'</b> · '
+      +'市值 <b>¥'+(d.market_value||0).toFixed(2)+'</b></div>'
+      +'<div style="margin:6px 0;"><div style="height:8px;background:#eee;border-radius:4px;overflow:hidden;"><div style="width:'+bar+'%;height:8px;background:'+col+';"></div></div></div>'
+      +'<div style="margin-bottom:6px;">'+(d.week_closed?'已实现':'浮动')+'盈亏：<b style="color:'+col+';">'+money(d.total_pnl||0)+'</b> / 目标 +¥'+(d.target||200)+' · 完成 <b>'+pct.toFixed(1)+'%</b></div>'
+      +rows
+      +'<div style="margin-top:6px;color:#999;font-size:11px;">'+(d.note||'')+'</div>';
+  }
+  function load(){
+    var x=new XMLHttpRequest();
+    x.open('GET',URL+'?t='+Date.now(),true);
+    x.onload=function(){ try{ render(JSON.parse(x.responseText)); }catch(e){ var b=document.getElementById('weeklyBody'); if(b) b.textContent='周度账户数据解析失败'; } };
+    x.onerror=function(){ var b=document.getElementById('weeklyBody'); if(b) b.textContent='周度账户数据拉取失败'; };
+    x.send();
+  }
+  window.__refreshWeekly=load;
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',load); else load();
+  setInterval(function(){ if(!document.hidden) load(); },60000);
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden) load(); });
+})();
+</script>
+
 </body></html>
