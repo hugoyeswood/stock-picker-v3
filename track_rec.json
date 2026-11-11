@@ -1,0 +1,43 @@
+{
+ "updated": "2026-11-11 14:30",
+ "days": [
+  {
+   "date": "2026-11-11",
+   "stocks": [
+    {
+     "code": "600609",
+     "name": "金杯汽车",
+     "entry": 4.07,
+     "shares": 200,
+     "stop": 3.87,
+     "tp": 4.48,
+     "qty": "2手（200股）",
+     "close": 4.07,
+     "prev_close": null
+    },
+    {
+     "code": "000782",
+     "name": "恒申新材",
+     "entry": 8.39,
+     "shares": 100,
+     "stop": 7.97,
+     "tp": 9.23,
+     "qty": "1手（100股）",
+     "close": 8.39,
+     "prev_close": null
+    },
+    {
+     "code": "002892",
+     "name": "科力尔",
+     "entry": 9.71,
+     "shares": 100,
+     "stop": 9.22,
+     "tp": 10.68,
+     "qty": "1手（100股）",
+     "close": 9.71,
+     "prev_close": null
+    }
+   ]
+  }
+ ]
+}
