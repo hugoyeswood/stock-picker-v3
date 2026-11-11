@@ -48,10 +48,23 @@ def normalize(df, source):
                "pe_ttm":"pe","zljlr":"mflow","ltsz":"ltsz","stock_type":"stype"}
     elif source == "东财":
         ren = {"最新价":"price","涨跌幅":"chg","量比":"lb","换手率":"hsl",
-               "市盈率-动态":"pe","总市值":"ltsz","股票代码":"code","股票简称":"name"}
+               "市盈率-动态":"pe","总市值":"ltsz","股票代码":"code","股票简称":"name",
+               "代码":"code","名称":"name","5分钟涨跌":"chg5","60日涨跌幅":"chg60"}
     else:
         ren = {"最新价":"price","涨跌幅":"chg"}
     df = df.rename(columns=ren)
+    # 东财/新浪返回纯6位代码，统一转成腾讯前缀格式（sz000782 / sh600609），页面与K线接口都依赖
+    if "code" in df.columns:
+        def _tx(c):
+            c = str(c).strip()
+            if c.startswith(("sh","sz","bj")): return c
+            c = c.zfill(6)
+            if c.startswith("6"): return "sh" + c
+            if c.startswith(("0","3")): return "sz" + c
+            return "bj" + c
+        df["code"] = df["code"].map(_tx)
+    if "code" not in df.columns or "name" not in df.columns:
+        raise RuntimeError("缺少 code/name 列: " + ",".join(map(str, df.columns[:8])))
     for col in ["chg5","chg10","chg20","chg60","lb","hsl","pe","mflow","ltsz"]:
         if col not in df.columns:
             df[col] = float("nan")
