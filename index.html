@@ -2148,12 +2148,19 @@ function renderShortTerm(j){
   return html;
 }
 function fetchStRec(){
-  // 同源优先：由 network-first Service Worker 拦截返回线上最新，国内访问更稳；
-  // raw.githubusercontent.com 仅作兜底（部分网络环境可达性差）
+  // 同源优先；若同源数据不是当天的（仓库未及时更新/缓存旧版），自动回退到主站 hugoyeswood/stock-picker 的当日目录
+  var today=(function(){ var d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); })();
+  var MAIN='https://raw.githubusercontent.com/hugoyeswood/stock-picker/main/short_term_rec.json?v=';
   return fetch('short_term_rec.json?v='+Date.now())
     .then(function(r){ return r.ok?r.json():null; })
-    .catch(function(){
-      return fetch('https://raw.githubusercontent.com/hugoyeswood/stock-picker-v3/main/short_term_rec.json?v='+Date.now()).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; });
+    .catch(function(){ return null; })
+    .then(function(j){
+      if(j && j.stocks && j.date===today) return j;
+      return fetch(MAIN+Date.now()).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; })
+        .then(function(m){
+          if(m && m.stocks && m.date===today) return m;
+          return j;
+        });
     });
 }
 function refreshShortTerm(){
