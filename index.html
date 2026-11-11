@@ -926,6 +926,12 @@
     <div class="w-total">当前可用 <b>¥1000.00</b></div></div>
   <div class="w-rows"><div class="w-row"><span class="w-date">2026-10-31</span><span class="w-amt">+¥1000.00</span><span class="w-note">初始转入</span></div></div>
   <div class="w-hint">要转入资金？本地运行 <b>python add_fund.py</b>，然后重新部署即可。</div>
+  <div style="margin-top:10px;padding-top:10px;border-top:1px dashed #e5e5e5;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;">
+    <span style="color:#555;">模拟本金</span>
+    <input id="priInput" type="number" min="100" step="100" style="width:120px;padding:7px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+    <button id="priBtn" style="padding:7px 14px;border:0;border-radius:8px;background:#1a237e;color:#fff;font-size:13px;">保存本金</button>
+    <span style="color:#888;font-size:12px;">只改本机模拟本金，不动持仓成本</span>
+  </div>
 </div>
 </div>
 <div class="foot">状态依据：现价 vs 20日均线、离5日均线远近；买入区间=现价与MA5之间。<br>
@@ -945,6 +951,19 @@ function getBudget(){ try{ return parseFloat(localStorage.getItem('myBudget'))||
 function setBudget(v){ localStorage.setItem('myBudget', v); refreshFundPanel(); }
 function getPrincipal(){ try{ var v=parseFloat(localStorage.getItem('myPrincipal')); return (!v||v<=0)?1000:v; }catch(e){ return 1000; } }
 function setPrincipal(v){ localStorage.setItem('myPrincipal', v); refreshFundPanel(); }
+function bindPrincipalUI(){
+  var inp=document.getElementById('priInput'), btn=document.getElementById('priBtn'); if(!inp||!btn) return;
+  inp.value=getPrincipal();
+  btn.onclick=function(){
+    var v=parseFloat(inp.value);
+    if(!v||v<100){ uiAlert('本金至少 100 元'); return; }
+    setPrincipal(v);
+    try{ if(typeof cloudAuto==='function') cloudAuto(); }catch(e){}
+    uiAlert('模拟本金已设为 ¥'+v.toFixed(2)+'；持仓成本与盈亏不受影响。');
+  };
+}
+try{ bindPrincipalUI(); }catch(e){}
+document.addEventListener('DOMContentLoaded',function(){ try{ bindPrincipalUI(); }catch(e){} });
 function editPrincipal(){ uiPrompt('请输入本金（元）：', getPrincipal(), function(v){ if(!v||isNaN(v)||parseFloat(v)<=0) return; setPrincipal(parseFloat(v)); }); }
 function editBudget(){ uiPrompt('请输入可用资金（元）：', getBudget(), function(v){ if(!v||isNaN(v)||parseFloat(v)<=0) return; setBudget(parseFloat(v)); }); }
 function todayKey(){ var d=new Date(); return d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate(); }
@@ -2605,11 +2624,14 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-
           try{ var o=JSON.parse(line); if(o.event==='message'&&o.message){ var p=JSON.parse(o.message); if(p&&p.at&&(!last||p.at>last.at)) last=p; } }catch(e){}
         });
         if(mode==='bind'){
+          var localN=(typeof getTrades==='function')?getTrades().length:0;
+          var remoteEmpty=!(last&&last.trades&&last.trades.length);
+          if(last && remoteEmpty && localN>0){ push(); msg('线上是空记录，已用本机 '+localN+' 笔持仓上传，其他设备稍后可见。'); state('在线 · 已绑定','#2e7d32'); return; }
           if(last && (last.at||0) >= localAt()){ if(apply(last)) msg('已从线上拉取最新持仓（'+new Date(last.at).toLocaleString('zh-CN')+'）'); state('在线 · 已绑定','#2e7d32'); }
           else { push(); msg('已把本机持仓上传到线上，其他设备用同一同步码即可看到。'); }
           return;
         }
-        if(last && last.at>localAt()){ if(apply(last)) msg('已从线上拉取最新持仓（'+new Date(last.at).toLocaleString('zh-CN')+'）'); }
+        if(last && last.at>localAt() && last.trades && last.trades.length){ if(apply(last)) msg('已从线上拉取最新持仓（'+new Date(last.at).toLocaleString('zh-CN')+'）'); }
         else if(!silent) msg('线上已是最新（本机最后同步 '+new Date(localAt()||0).toLocaleString('zh-CN')+'）');
         state('在线 · '+new Date().toTimeString().slice(0,8),'#2e7d32');
       })
