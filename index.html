@@ -1313,6 +1313,7 @@ function normCode(c){
   return c;
 }
 
+function pf(c){ try{ return normCode(c); }catch(e){ return c; } }  // 代码前缀化（原先未定义导致每秒刷新第一只后就中断）
 function refreshRealtime(){
   var codes = [];
   document.querySelectorAll('.price[data-code]').forEach(function(el){ var c=el.getAttribute('data-code'); if(codes.indexOf(c)<0) codes.push(c); });
@@ -1343,7 +1344,8 @@ function refreshRealtime(){
         var list = orig[real] || [];
         list.forEach(function(code){
           var pe = m.p[code], ce = m.c[code];
-          _lastPrice[code] = price; _lastPrice[pf(code)] = price; _lastChg[code] = chg; _lastPrev[code] = parseFloat(parts[4]); _lastVol[code] = parseFloat(parts[49]); _lastTr[code] = parseFloat(parts[38]); _lastAmp[code] = parseFloat(parts[43]); _lastAvg[code] = parseFloat(parts[51]); _lastHigh[code] = parseFloat(parts[33]); _lastLow[code] = parseFloat(parts[34]); _lastO[code] = parseFloat(parts[7]); _lastI[code] = parseFloat(parts[8]);
+          if(!window._pfWarn){ try{ _lastPrice[pf(code)] = price; }catch(e){ window._pfWarn=1; } } else { try{ _lastPrice[pf(code)] = price; }catch(e){} }
+          _lastPrice[code] = price; _lastChg[code] = chg; _lastPrev[code] = parseFloat(parts[4]); _lastVol[code] = parseFloat(parts[49]); _lastTr[code] = parseFloat(parts[38]); _lastAmp[code] = parseFloat(parts[43]); _lastAvg[code] = parseFloat(parts[51]); _lastHigh[code] = parseFloat(parts[33]); _lastLow[code] = parseFloat(parts[34]); _lastO[code] = parseFloat(parts[7]); _lastI[code] = parseFloat(parts[8]);
           if(pe) pe.textContent = '¥' + price.toFixed(2);
           if(ce){ ce.textContent = (chg>=0?'+':'') + chg.toFixed(2) + '%'; ce.style.color = chg>=0 ? '#d32f2f' : '#2e7d32'; }
         });
