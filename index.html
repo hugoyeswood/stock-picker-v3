@@ -2543,4 +2543,101 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-
 })();
 </script>
 
+<div class="card" id="cloudSyncCard" style="margin-top:12px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+    <b style="font-size:15px;">☁️ 线上同步（持仓跨设备一致）</b><span id="csState" style="font-size:11px;color:#888;">未开启</span>
+  </div>
+  <div style="font-size:12px;color:#555;margin-bottom:8px;">设置同步码后，持仓/资金/预警会实时上传到线上；换手机或换浏览器用同一同步码即可拉到最新持仓。同步码相当于密码，别用太简单的。</div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <input id="csCode" type="text" placeholder="同步码，如 jihongrun2026" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+    <button id="csBtn" style="padding:8px 14px;border:0;border-radius:8px;background:#1a237e;color:#fff;font-size:13px;">开启</button>
+  </div>
+  <div id="csMsg" style="font-size:11px;color:#888;margin-top:6px;">开启后每 30 秒自动与线上对齐，交易后立即上传。</div>
+</div>
+<script>
+(function(){
+  var PFX='spv3sync-', lastAt=0, timer=null;
+  function h32(s){ var x=0x811c9dc5; for(var i=0;i<s.length;i++){ x^=s.charCodeAt(i); x=(x*16777619)>>>0; } return ('00000000'+x.toString(16)).slice(-8); }
+  function topic(){ var c=(localStorage.getItem('spCloudCode')||'').trim(); return c? PFX+h32(c)+'-'+c.length : ''; }
+  function state(t,color){ var e=document.getElementById('csState'); if(e){ e.textContent=t; e.style.color=color||'#888'; } }
+  function msg(t){ var e=document.getElementById('csMsg'); if(e) e.textContent=t; }
+  function now(){ return Date.now(); }
+  function localAt(){ return parseInt(localStorage.getItem('spCloudAt')||'0',10)||0; }
+  function payload(){
+    var p={v:1, at:now(), trades:(typeof getTrades==='function'?getTrades():[]),
+      budget:(typeof getBudget==='function'?getBudget():null), principal:(typeof getPrincipal==='function'?getPrincipal():null),
+      hs:(typeof loadHS==='function'?loadHS():null)};
+    return p;
+  }
+  function push(){
+    var t=topic(); if(!t) return;
+    var p=payload(); if(!p.trades || !p.trades.length && !confirm0()) {}
+    localStorage.setItem('spCloudAt', String(p.at));
+    fetch('https://ntfy.sh/'+t,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(p)})
+      .then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); state('已同步 '+new Date().toTimeString().slice(0,8),'#2e7d32'); })
+      .catch(function(e){ state('上传失败：'+e.message,'#c62828'); });
+  }
+  function confirm0(){ return true; }
+  function apply(p){
+    if(!p||!Array.isArray(p.trades)) return false;
+    try{
+      if(typeof applyCloudData==='function'){ applyCloudData(p); }
+      else { localStorage.setItem('myTrades', JSON.stringify(p.trades)); try{ localStorage.setItem('myTrades_bak', JSON.stringify(p.trades)); }catch(e){}
+             if(p.budget>0) localStorage.setItem('myBudget', String(p.budget));
+             if(p.principal>0) localStorage.setItem('myPrincipal', String(p.principal)); }
+    }catch(e){ return false; }
+    localStorage.setItem('spCloudAt', String(p.at||now()));
+    try{ refreshHoldings(); refreshFundPanel(); if(window.__refreshWeekly) window.__refreshWeekly(); }catch(e){}
+    return true;
+  }
+  function pull(silent){
+    var t=topic(); if(!t) return;
+    fetch('https://ntfy.sh/'+t+'/json?poll=1&since=12h')
+      .then(function(r){ return r.text(); })
+      .then(function(txt){
+        var last=null;
+        txt.split('\n').forEach(function(line){
+          if(!line.trim()) return;
+          try{ var o=JSON.parse(line); if(o.event==='message'&&o.message){ var p=JSON.parse(o.message); if(p&&p.at&&(!last||p.at>last.at)) last=p; } }catch(e){}
+        });
+        if(last && last.at>localAt()){ if(apply(last)) msg('已从线上拉取最新持仓（'+new Date(last.at).toLocaleString('zh-CN')+'）'); }
+        else if(!silent) msg('线上已是最新（本机最后同步 '+new Date(localAt()||0).toLocaleString('zh-CN')+'）');
+        state('在线 · '+new Date().toTimeString().slice(0,8),'#2e7d32');
+      })
+      .catch(function(e){ state('离线：'+e.message,'#c62828'); });
+  }
+  function start(){
+    if(timer) clearInterval(timer);
+    timer=setInterval(function(){ if(!document.hidden) pull(true); },30000);
+    pull(false);
+  }
+  function ui(){
+    var inp=document.getElementById('csCode'), btn=document.getElementById('csBtn');
+    if(!inp||!btn) return;
+    var on=!!topic(); inp.value=localStorage.getItem('spCloudCode')||'';
+    btn.textContent=on?'已开启（点击关闭）':'开启';
+    btn.style.background=on?'#2e7d32':'#1a237e';
+    if(on) start();
+    btn.onclick=function(){
+      if(topic()){ localStorage.removeItem('spCloudCode'); if(timer) clearInterval(timer); timer=null; state('已关闭同步','#888'); msg('已停止线上同步，持仓回到仅本机保存。'); btn.textContent='开启'; btn.style.background='#1a237e'; if(window.__bumpCloudBtn) window.__bumpCloudBtn(); return; }
+      var c=(inp.value||'').trim();
+      if(c.length<6){ msg('同步码至少 6 位，建议字母+数字，例如 jihongrun2026'); return; }
+      localStorage.setItem('spCloudCode', c);
+      btn.textContent='已开启（点击关闭）'; btn.style.background='#2e7d32';
+      push(); start();
+    };
+    window.__bumpCloudBtn=function(){ btn.textContent=topic()?'已开启（点击关闭）':'开启'; btn.style.background=topic()?'#2e7d32':'#1a237e'; };
+  }
+  function hookTrades(){
+    if(typeof saveTrades!=='function' || saveTrades.__patched) return;
+    var orig=saveTrades;
+    var wrapped=function(t){ orig(t); if(topic()) setTimeout(push,300); };
+    wrapped.__patched=true; saveTrades=wrapped; window.saveTrades=wrapped;
+  }
+  setTimeout(function(){ ui(); hookTrades(); if(topic()) start(); },1500);
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden && topic()) pull(true); });
+  window.__cloudPush=push; window.__cloudPull=pull;
+})();
+</script>
+
 </body></html>
