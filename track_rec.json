@@ -50,8 +50,9 @@
      "stop": 9.0,
      "tp": 10.42,
      "qty": "3手（300股）",
-     "close": 9.43,
-     "prev_close": null
+     "close": 9.39,
+     "prev_close": null,
+     "chg": -0.84
     },
     {
      "code": "sz002324",
@@ -61,8 +62,9 @@
      "stop": 8.81,
      "tp": 10.2,
      "qty": "3手（300股）",
-     "close": 9.34,
-     "prev_close": null
+     "close": 9.37,
+     "prev_close": null,
+     "chg": 1.08
     },
     {
      "code": "sz002825",
@@ -72,8 +74,9 @@
      "stop": 8.7,
      "tp": 10.08,
      "qty": "4手（400股）",
-     "close": 9.22,
-     "prev_close": null
+     "close": 9.24,
+     "prev_close": null,
+     "chg": 0.87
     }
    ]
   }
