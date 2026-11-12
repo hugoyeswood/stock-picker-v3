@@ -125,7 +125,7 @@ def calc_trade(code, price):
         buy_low = round(min(price, ma5), 2) if pd.notna(ma5) else round(price, 2)
         buy_high = round(price, 2)
         stop = round(price * 0.95, 2)
-        take = round(price * 1.10, 2)
+        take = round(price * 1.15, 2)
         # 风险提示
         risks = []
         up_from_low = (price - low20) / low20 * 100 if (pd.notna(low20) and low20 > 0) else 0
@@ -244,11 +244,11 @@ rows = pool.to_dict("records")
 scored = []
 for r in rows:
     s, why = 打分(r)
-    if s >= 6:
+    if s >= 7:
         scored.append((s, r, why))
 scored.sort(reverse=True, key=lambda x: x[0])
 top = scored[:TOP_N]
-print(f"达到信号门槛(≥6分)的有 {len(scored)} 只，取前 {TOP_N} 只")
+print(f"达到信号门槛(≥7分)的有 {len(scored)} 只，取前 {TOP_N} 只")
 
 # ============ 7. 组装结果（含买卖点） ============
 print("正在逐只拉历史K线算买卖点（约半分钟）...")
@@ -534,7 +534,7 @@ function editLine(code,kind){
   if(!one) return;
   var cost=one.cost/one.qty;
   var s=loadHS()[code]||{};
-  var cur=kind==='tp'?(s.tp||(cost*1.10).toFixed(2)):(s.sl||(cost*0.95).toFixed(2));
+  var cur=kind==='tp'?(s.tp||(cost*1.15).toFixed(2)):(s.sl||(cost*0.95).toFixed(2));
   var v0=kind==='tp'?'输入上涨预估（止盈目标价）：':'输入跌停峰值（止损价）：';
   uiPrompt(v0, cur, function(v){
     if(!v||isNaN(v)||parseFloat(v)<=0) return;
@@ -594,7 +594,7 @@ function refreshHoldings(){
     var cost=h.cost/h.qty;
     var lp=_lastPrice[h.code], lc=_lastChg[h.code];
     var lcTxt=lp?((lc>=0?'+':'')+lc.toFixed(2)+'%'):'', lcCol=lp?(lc>=0?'color:#d32f2f;':'color:#2e7d32;'):'';
-    var tp=s[h.code]&&s[h.code].tp?parseFloat(s[h.code].tp):cost*1.10;
+    var tp=s[h.code]&&s[h.code].tp?parseFloat(s[h.code].tp):cost*1.15;
     var sl=s[h.code]&&s[h.code].sl?parseFloat(s[h.code].sl):cost*0.95;
     var tpPct=((tp-cost)/cost*100).toFixed(1), slPct=((sl-cost)/cost*100).toFixed(1);
     html+='<div class="h-item">'+
@@ -635,7 +635,7 @@ function monitorAlerts(){
     if(!p||isNaN(p)) return;
     var cost=h.cost/h.qty;
     var sl=s[h.code]&&s[h.code].sl?parseFloat(s[h.code].sl):cost*0.95;
-    var tp=s[h.code]&&s[h.code].tp?parseFloat(s[h.code].tp):cost*1.10;
+    var tp=s[h.code]&&s[h.code].tp?parseFloat(s[h.code].tp):cost*1.15;
     var line=sl*1.02;
     var a=alerts[h.code]||{};
     if(p<=line && !(a.sl && now-a.sl<1800000)){
@@ -839,7 +839,7 @@ function holdAdviceFor(h){
   var cost=h.cost/h.qty;
   var s=loadHS()[h.code]||{};
   var sl=s.sl?parseFloat(s.sl):cost*0.95;
-  var tp=s.tp?parseFloat(s.tp):cost*1.10;
+  var tp=s.tp?parseFloat(s.tp):cost*1.15;
   var chg=_lastChg[h.code]||0; if(isNaN(chg)) chg=0;
   var vr=_lastVol[h.code]||0; var tr=_lastTr[h.code]||0; var amp=_lastAmp[h.code]||0;
   var high=_lastHigh[h.code]||0; var low=_lastLow[h.code]||0;
@@ -912,7 +912,7 @@ function openHoldOps(code){
   var price=el?parseFloat(el.textContent.replace('¥','')):0;
   var cost=one.cost/one.qty;
   var s=loadHS()[code]||{};
-  var tp=s.tp?parseFloat(s.tp):cost*1.10;
+  var tp=s.tp?parseFloat(s.tp):cost*1.15;
   var pnl=(price-cost)*one.qty-one.fee;
   var pnlTxt=price?(pnl>=0?'+':'')+pnl.toFixed(2)+'元（'+((price-cost)/cost*100>=0?'+':'')+((price-cost)/cost*100).toFixed(2)+'%）':'--';
   var tpPct=((tp-cost)/cost*100).toFixed(1);
@@ -1131,7 +1131,7 @@ html_doc = f"""<!DOCTYPE html>
 (function(){{ try{{ if(/MicroMessenger/i.test(navigator.userAgent)){{ var t=document.getElementById('wxTip'); if(t) t.style.display='block'; }} }}catch(e){{}} }})();
 </script>
 <h1>今日候选清单 <span class="ver-badge">大师逻辑 V3</span></h1>
-<div class="sub">更新于 {now} · 数据源：{esc(src)} · 当前可用资金 ¥{BUDGET:.2f} <span class="ver-badge">v20261105-V3-ES5·融合V5</span></div>
+<div class="sub">更新于 {now} · 数据源：{esc(src)} · 当前可用资金 ¥{BUDGET:.2f} <span class="ver-badge">v20261112-V3.2-ES5·融合V5</span></div>
 <div id="errBanner" class="err-banner"></div>
 <div id="marketStatus" class="market-badge" style="display:none"></div>
 <div class="tip"><b>怎么用：</b>看卡片【状态】——"可买"按【建议买入区间】挂限价单买1手；"等回踩"别追高；"观望"先别碰。<br>
