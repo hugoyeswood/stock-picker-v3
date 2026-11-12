@@ -2032,7 +2032,7 @@ function fetchStRec(){
     .then(function(r){ return r.ok?r.json():null; })
     .catch(function(){ return null; })
     .then(function(j){
-      if(j && j.stocks && j.date===today) return j;
+      if(j && j.stocks && (j.date===today || (j.date && j.date>today))) return j; // 当天或未来预备名单优先，不回退主站
       return fetch(MAIN+Date.now()).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; })
         .then(function(m){
           if(m && m.stocks && m.date===today) return m;
@@ -2046,7 +2046,7 @@ function refreshShortTerm(){
     if(!j||!j.stocks) return;
     var d=new Date();
     var todayStr=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
-    if(j.date&&j.date!==todayStr) return; // 只渲染当天目录
+    if(j.date && j.date!==todayStr && !(j.date>todayStr)) return; // 允许当天或未来(下周一预备)名单渲染
     el.innerHTML=renderShortTerm(j);
     _priceMap=null; // 新渲染元素需重新收集，价格继续每秒刷新
     updateStWarn();
@@ -2392,7 +2392,7 @@ function sellAll(code,name,price){
   setTimeout(run,2500);
   setInterval(run,60000);
 })();
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261112e'); }
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261112f'); }
 </script>
 <script src="./update-check.js" data-page-upd="2026-11-12 15:38"></script>
 <script>
