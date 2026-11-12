@@ -2671,4 +2671,66 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-
 })();
 </script>
 
+<script>// ===== 推荐股实时告警（1秒级：声音 + 系统通知 + 顶部横幅）=====
+var _stAlertFired = {};
+function _stAlertBar(msg, color){
+  var b = document.getElementById('stAlertBar');
+  if(!b){ b = document.createElement('div'); b.id = 'stAlertBar'; document.body.appendChild(b); }
+  b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;padding:11px 36px 11px 12px;'
+    + 'font-size:13px;line-height:1.5;color:#fff;text-align:left;box-shadow:0 2px 10px rgba(0,0,0,.35);background:' + (color || '#c62828');
+  b.innerHTML = msg + '<span id="stAlertClose" style="position:absolute;right:10px;top:8px;cursor:pointer;font-size:17px;">&times;</span>';
+  b.style.display = 'block';
+  var c = document.getElementById('stAlertClose');
+  if(c) c.onclick = function(){ b.style.display = 'none'; };
+}
+function _stBeep(){
+  try{
+    var ac = new (window.AudioContext || window.webkitAudioContext)();
+    var o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.value = 880; g.gain.value = 0.12;
+    o.connect(g); g.connect(ac.destination); o.start();
+    setTimeout(function(){ try{ o.stop(); ac.close(); }catch(e){} }, 260);
+  }catch(e){}
+}
+function _stNotify(t){
+  try{ if(window.Notification && Notification.permission === 'granted'){ new Notification('推荐股提醒', { body: t, tag: 'stalert' }); } }catch(e){}
+}
+function _stCheck(){
+  try{
+    var d = new Date();
+    if(d.getDay() === 0 || d.getDay() === 6) return;
+    var mi = d.getHours() * 60 + d.getMinutes();
+    if(!((mi >= 570 && mi <= 690) || (mi >= 780 && mi <= 900))) return;
+    var els = document.querySelectorAll('.st-warn[data-stwarn]');
+    for(var i = 0; i < els.length; i++){
+      var el = els[i], code = el.getAttribute('data-stwarn');
+      var tp = parseFloat(el.getAttribute('data-tp') || '0'), sl = parseFloat(el.getAttribute('data-sl') || '0');
+      var p = _lastPrice[code], chg = _lastChg[code];
+      if(!p || isNaN(p)) continue;
+      var nm = '', host = el.parentNode;
+      if(host){ var nmEl = host.querySelector ? host.querySelector('.name') : null; if(nmEl) nm = nmEl.textContent || ''; }
+      var k = null, t = null, col = '#c62828';
+      if(tp && p >= tp){
+        k = 'TP:' + code; col = '#e65100';
+        t = '🎯 ' + (nm || code) + ' 触及涨值巅峰 ¥' + tp.toFixed(2) + '（现价 ' + p.toFixed(2) + '，' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%）→ 建议落袋或勿追高';
+      } else if(sl && p <= sl){
+        k = 'SL:' + code;
+        t = '🛑 ' + (nm || code) + ' 跌破止损 ¥' + sl.toFixed(2) + '（现价 ' + p.toFixed(2) + '）→ 建议立即止损离场';
+      } else if(!isNaN(chg) && chg >= 9.5){
+        k = 'LU:' + code; col = '#d32f2f';
+        t = '🚀 ' + (nm || code) + ' 逼近涨停 ' + (chg >= 0 ? '+' : '') + chg.toFixed(2) + '% → 勿追高';
+      }
+      if(k && !_stAlertFired[k]){ _stAlertFired[k] = 1; _stAlertBar(t, col); _stBeep(); _stNotify(t); }
+    }
+  }catch(e){}
+}
+setInterval(_stCheck, 1000);
+(function(){
+  function ask(){
+    try{ if(window.Notification && Notification.permission === 'default'){ Notification.requestPermission(); } }catch(e){}
+    document.removeEventListener('click', ask);
+  }
+  document.addEventListener('click', ask);
+})();
+</script>
 </body></html>
