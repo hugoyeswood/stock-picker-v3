@@ -953,9 +953,10 @@ function getPrincipal(){
   var v=0; try{ v=parseFloat(localStorage.getItem('myPrincipal'))||0; }catch(e){}
   var buys=0; try{ getTrades().forEach(function(t){ if(t.type==='buy') buys+=(+t.amount||(t.price*t.qty))+(+t.fee||0); }); }catch(e){}
   // 本金未设置、或明显小于累计买入成本（历史默认 1000 导致「长期盈亏」虚高）→ 按实际买入成本校准
-  if(buys>0 && (!v || v<buys*0.5)){ v=Math.round(buys*100)/100; try{ localStorage.setItem('myPrincipal',String(v)); }catch(e){} }
+  var uset=false; try{ uset=localStorage.getItem('myPrincipalSet')==='1'; }catch(e){}
+  if(!uset && buys>0 && (!v || v<buys*0.5)){ v=Math.round(buys*100)/100; try{ localStorage.setItem('myPrincipal',String(v)); }catch(e){} }
   return v||1000; }
-function setPrincipal(v){ localStorage.setItem('myPrincipal', v); refreshFundPanel(); }
+function setPrincipal(v){ localStorage.setItem('myPrincipal', v); try{ localStorage.setItem('myPrincipalSet','1'); }catch(e){} refreshFundPanel(); }
 function bindPrincipalUI(){
   var inp=document.getElementById('priInput'), btn=document.getElementById('priBtn'); if(!inp||!btn) return;
   inp.value=getPrincipal();
