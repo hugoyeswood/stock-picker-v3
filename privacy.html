@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>自动选股小助手 · 隐私政策</title>
+<style>
+body{max-width:820px;margin:0 auto;padding:24px 18px 60px;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#222;line-height:1.85;background:#fff}
+h1{font-size:22px;margin:0 0 6px}
+.sub{color:#888;font-size:13px;margin-bottom:24px}
+h2{font-size:17px;margin:28px 0 8px;padding-left:9px;border-left:4px solid #1a73e8}
+p,li{font-size:15px}
+li{margin:6px 0}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px}
+th,td{border:1px solid #e2e2e2;padding:9px 10px;text-align:left;vertical-align:top}
+th{background:#f6f8fb;font-weight:600}
+.box{background:#f7f9fc;border:1px solid #e6ecf3;border-radius:8px;padding:14px 16px;margin:14px 0;font-size:14px}
+a{color:#1a73e8;word-break:break-all}
+</style>
+</head>
+<body>
+
+<h1>「自动选股小助手」隐私政策</h1>
+<div class="sub">生效日期：2026-11-12　|　适用版本：1.0.1 及以后　|　开发者：季宏润</div>
+
+<div class="box">
+本应用是一款<strong>个人自用型的行情查看与模拟记账工具</strong>。所有交易均为模拟，不连接任何证券公司，不进行真实委托，不构成投资建议。
+</div>
+
+<h2>一、我们收集哪些信息</h2>
+<table>
+<tr><th>信息类型</th><th>具体内容</th><th>存储位置</th><th>是否上传服务器</th></tr>
+<tr><td>模拟持仓记录</td><td>您手动录入的股票代码、数量、成本价、买入日期</td><td>本机应用本地存储（localStorage）</td><td>默认不上传。仅当您主动填写「同步码」并点击同步时，才会把持仓数据加密摘要发送到第三方中转服务 ntfy.sh，用于您自己多台设备之间对账</td></tr>
+<tr><td>自选与预警设置</td><td>自选股列表、价格提醒阈值</td><td>本机本地存储</td><td>否</td></tr>
+<tr><td>本金与目标设置</td><td>您填写的模拟本金金额</td><td>本机本地存储</td><td>否</td></tr>
+</table>
+
+<h2>二、我们不收集的信息</h2>
+<ul>
+<li>不收集姓名、身份证号、手机号、邮箱等身份信息（应用内没有注册登录）</li>
+<li>不收集通讯录、短信、通话记录、相册、摄像头、麦克风内容</li>
+<li>不收集精确地理位置</li>
+<li>不读取其他应用的安装列表或使用记录</li>
+<li>不接入广告 SDK，不做用户画像，不向第三方出售或共享任何数据</li>
+</ul>
+
+<h2>三、应用申请的权限及用途</h2>
+<table>
+<tr><th>权限</th><th>用途</th><th>是否可拒绝</th></tr>
+<tr><td>INTERNET（网络访问）</td><td>获取公开的股票行情数据、加载页面内容</td><td>拒绝后无法显示行情，应用其余记账功能仍可使用</td></tr>
+<tr><td>ACCESS_NETWORK_STATE（网络状态）</td><td>判断当前是否有网络，避免无网时反复请求造成耗电</td><td>可拒绝</td></tr>
+</table>
+
+<h2>四、第三方服务</h2>
+<p>应用运行过程中会访问以下第三方公开接口，仅传输行情代码等必要参数，不携带您的任何个人信息：</p>
+<ul>
+<li><strong>腾讯行情</strong>（qt.gtimg.cn）：获取 A 股公开实时行情、历史行情</li>
+<li><strong>GitHub Pages</strong>（hugoyeswood.github.io）：加载应用页面与推荐目录数据</li>
+<li><strong>ntfy.sh</strong>：仅在您自愿启用跨设备同步时使用，用于中转持仓摘要</li>
+</ul>
+
+<h2>五、数据保存期限与删除方式</h2>
+<ul>
+<li>本机数据一直保留，直到您主动删除</li>
+<li>删除方式：应用内「清空持仓」「恢复默认」按钮，或卸载应用（卸载即清除本机全部数据）</li>
+<li>若您使用过同步码，可在其他设备上清空后不再同步；中转服务上的历史消息约 12 小时后自动过期</li>
+</ul>
+
+<h2>六、未成年人保护</h2>
+<p>本应用面向成年人自用，不面向未成年人。应用内不提供任何付费、充值、打赏功能，也不含社交与内容发布功能。</p>
+
+<h2>七、信息安全</h2>
+<p>应用所有数据默认只保存在您本机，不设服务器账号体系，因此不存在集中存储的用户数据库。请您自行保管设备与同步码，同步码相当于访问口令，请勿告知他人。</p>
+
+<h2>八、政策更新</h2>
+<p>如本政策发生变更，我们会在应用内与本页面同步更新，并标注新的生效日期。继续使用即表示您接受更新后的政策。</p>
+
+<h2>九、联系我们</h2>
+<p>如对本政策有任何疑问、意见或投诉，可通过以下方式联系开发者：</p>
+<ul>
+<li>开发者：季宏润</li>
+<li>联系邮箱：<span id="mail">—</span></li>
+</ul>
+
+<p style="margin-top:34px;color:#999;font-size:13px">本页面上线地址：https://hugoyeswood.github.io/stock-picker-v3/privacy.html<br>
+最后更新：2026-11-12</p>
+</body>
+</html>
