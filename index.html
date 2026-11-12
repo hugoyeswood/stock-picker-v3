@@ -949,7 +949,12 @@ function uiAlert(msg){ var old=document.getElementById('uiMask'); if(old&&old.pa
 function uiPrompt(title,def,cb){ var old=document.getElementById('uiMask'); if(old&&old.parentNode) old.parentNode.removeChild(old);var mask=document.createElement('div'); mask.id='uiMask'; mask.className='ui-mask'; _uiCb=cb;mask.innerHTML='<div class="ui-box"><div class="ui-title">'+String(title||'').replace(/</g,'&lt;')+'</div><input class="ui-input" id="uiInp" type="text" value=""><div class="ui-btns"><button class="ui-btn ui-btn-cancel" onclick="_uiRemove()">取消</button><button class="ui-btn ui-btn-ok" onclick="uiPromptOk()">确定</button></div></div>';document.body.appendChild(mask);var inp=document.getElementById('uiInp'); inp.value=(def===undefined?'':def); inp.focus();inp.onkeydown=function(e){ if(e.key==='Enter'){ uiPromptOk(); } }; }
 function getBudget(){ try{ return parseFloat(localStorage.getItem('myBudget'))||1000; }catch(e){ return 1000; } }
 function setBudget(v){ localStorage.setItem('myBudget', v); refreshFundPanel(); }
-function getPrincipal(){ try{ var v=parseFloat(localStorage.getItem('myPrincipal')); return (!v||v<=0)?1000:v; }catch(e){ return 1000; } }
+function getPrincipal(){
+  var v=0; try{ v=parseFloat(localStorage.getItem('myPrincipal'))||0; }catch(e){}
+  var buys=0; try{ getTrades().forEach(function(t){ if(t.type==='buy') buys+=(+t.amount||(t.price*t.qty))+(+t.fee||0); }); }catch(e){}
+  // 本金未设置、或明显小于累计买入成本（历史默认 1000 导致「长期盈亏」虚高）→ 按实际买入成本校准
+  if(buys>0 && (!v || v<buys*0.5)){ v=Math.round(buys*100)/100; try{ localStorage.setItem('myPrincipal',String(v)); }catch(e){} }
+  return v||1000; }
 function setPrincipal(v){ localStorage.setItem('myPrincipal', v); refreshFundPanel(); }
 function bindPrincipalUI(){
   var inp=document.getElementById('priInput'), btn=document.getElementById('priBtn'); if(!inp||!btn) return;
@@ -991,6 +996,19 @@ function refreshFundPanel(){ refreshHeadMeta(); var el=document.getElementById('
   h+='<div class="fp-row"><span class="fp-lab">今日盈亏</span><span class="fp-val '+pnlClass(f.todayPnl,'today')+'">'+pnlTxt(f.todayPnl)+'</span></div>';
   h+='<div class="fp-row"><span class="fp-lab">长期盈亏（累计）</span><span class="fp-val '+pnlClass(f.totalPnl,'total')+'">'+pnlTxt(f.totalPnl)+'</span></div>';
   el.innerHTML=h; }
+
+// ===== 持仓上报（把「我的持仓」真实数据送到服务端，供收盘自检/周目标用真实口径）=====
+var HOLD_TOPIC='spv3h-u81058-x7k2m9q';
+function _holdReport(){
+  try{
+    var hs=getHoldings(); if(!hs||!hs.length) return;
+    var f=calcFund();
+    var p={ts:Date.now(),ver:3,principal:f.principal,cash:f.cash,mv:f.mv,total:f.total,totalPnl:f.totalPnl,todayPnl:f.todayPnl,
+      holdings:hs.map(function(h){ return {code:h.code,name:h.name,qty:h.qty,cost:Math.round((h.cost/h.qty)*1000)/1000,amount:h.cost,fee:h.fee||0}; })};
+    fetch('https://ntfy.sh/'+HOLD_TOPIC,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(p)}).catch(function(){});
+  }catch(e){}
+}
+setTimeout(_holdReport,4000); setInterval(_holdReport,600000);
 
 // ===== 交易费用 =====
 function calcFee(amount,type){ var c=Math.max(amount*0.00025,5); var t=amount*0.00002; var s=0; if(type==='sell') s=amount*0.001; return c+t+s; }
