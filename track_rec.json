@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-11 14:40",
+ "updated": "2026-11-12 11:52",
  "days": [
   {
    "date": "2026-11-11",
@@ -35,6 +35,44 @@
      "tp": 10.57,
      "qty": "1手（100股）",
      "close": 9.61,
+     "prev_close": null
+    }
+   ]
+  },
+  {
+   "date": "2026-11-12",
+   "stocks": [
+    {
+     "code": "sh603066",
+     "name": "音飞储存",
+     "entry": 9.43,
+     "shares": 300,
+     "stop": 9.0,
+     "tp": 10.42,
+     "qty": "3手（300股）",
+     "close": 9.43,
+     "prev_close": null
+    },
+    {
+     "code": "sz002324",
+     "name": "普利特",
+     "entry": 9.34,
+     "shares": 300,
+     "stop": 8.81,
+     "tp": 10.2,
+     "qty": "3手（300股）",
+     "close": 9.34,
+     "prev_close": null
+    },
+    {
+     "code": "sz002825",
+     "name": "纳尔股份",
+     "entry": 9.22,
+     "shares": 400,
+     "stop": 8.7,
+     "tp": 10.08,
+     "qty": "4手（400股）",
+     "close": 9.22,
      "prev_close": null
     }
    ]
