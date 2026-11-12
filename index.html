@@ -2064,10 +2064,10 @@ function recalcRecLines(){
     var code=pe.getAttribute('data-code');
     // 止盈/止损必须以“推荐价”为基准，不能用实时现价重算，否则线随价格漂移、永远触发不了
     var entry=parseFloat(it.getAttribute('data-entry')||'0');
-    var tp0=parseFloat(it.getAttribute('data-tp0')||'0');
-    var sl0=parseFloat(it.getAttribute('data-sl0')||'0');
+    var _we=it.querySelector('.st-warn'); var tp0=parseFloat(it.getAttribute('data-tp0')||(_we&&_we.getAttribute('data-tp0'))||'0');
+    var sl0=parseFloat(it.getAttribute('data-sl0')||(_we&&_we.getAttribute('data-sl0'))||'0');
     if(!entry) return;
-    var tp=tp0?tp0.toFixed(2):(entry*1.06).toFixed(2);
+    var tp=tp0?tp0.toFixed(2):(entry*1.08).toFixed(2);
     var sl=sl0?sl0.toFixed(2):(entry*0.95).toFixed(2);
     var lo=(entry*0.97).toFixed(2), hi=entry.toFixed(2);
     var line=it.querySelector('.st-line');
@@ -2392,7 +2392,7 @@ function sellAll(code,name,price){
   setTimeout(run,2500);
   setInterval(run,60000);
 })();
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261113h'); }
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261113i'); }
 </script>
 <script src="./update-check.js" data-page-upd="2026-11-12 15:38"></script>
 <script>
