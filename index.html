@@ -952,7 +952,6 @@ function setBudget(v){ localStorage.setItem('myBudget', v); refreshFundPanel(); 
 function getPrincipal(){
   var v=0; try{ v=parseFloat(localStorage.getItem('myPrincipal'))||0; }catch(e){}
   var buys=0; try{ getTrades().forEach(function(t){ if(t.type==='buy') buys+=(+t.amount||(t.price*t.qty))+(+t.fee||0); }); }catch(e){}
-  // 本金未设置、或明显小于累计买入成本（历史默认 1000 导致「长期盈亏」虚高）→ 按实际买入成本校准
   var uset=false; try{ uset=localStorage.getItem('myPrincipalSet')==='1'; }catch(e){}
   if(!uset && buys>0 && (!v || v<buys*0.5)){ v=Math.round(buys*100)/100; try{ localStorage.setItem('myPrincipal',String(v)); }catch(e){} }
   return v||1000; }
@@ -2347,54 +2346,9 @@ function sellAll(code,name,price){
     x.send();
   }catch(e){}
 })();
-/* ===== 11-13 计划清仓（用户 2026-11-12 授权：纳尔 sz002825 / 普利特 sz002324 全部卖出） ===== */
-(function(){
-  var D='2026-11-13', CODES={'sz002825':1,'sz002324':1}, FLAG='_autoClose1113';
-  function bj(){ try{ return new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Shanghai'})); }catch(e){ return new Date(); } }
-  function run(){
-    if(localStorage.getItem(FLAG)) return;
-    var d=bj();
-    if(d.getFullYear()!==2026||d.getMonth()!==10||d.getDate()!==13) return;
-    var m=d.getHours()*60+d.getMinutes();
-    if(m<571||m>690) return;
-    var hs=getHoldings(), need=[];
-    hs.forEach(function(x){ if(CODES[x.code]&&x.qty>0) need.push(x); });
-    if(!need.length) return;
-    var qs=need.map(function(x){return x.code;}).join(',');
-    var sc=document.createElement('script');
-    sc.src='https://qt.gtimg.cn/q='+qs+'&_t='+new Date().getTime();
-    sc.onload=function(){
-      var done=[];
-      need.forEach(function(x){
-        var raw=window['v_'+x.code];
-        if(!raw) return;
-        var p=parseFloat(String(raw).split('~')[3]);
-        if(!p||p<=0) return;
-        var q=x.qty, amount=p*q, fee=calcFee(amount,'sell');
-        var trades=getTrades();
-        trades.push({type:'sell',code:x.code,name:x.name,price:p,qty:q,amount:amount,fee:fee,time:new Date().toLocaleString('zh-CN')+' [计划清仓]'});
-        saveTrades(trades);
-        setBudget(getBudget()+amount-fee);
-        done.push(x.name+' '+q+'股 @ ¥'+p.toFixed(2)+'（回款¥'+(amount-fee).toFixed(2)+'）');
-      });
-      if(done.length){
-        localStorage.setItem(FLAG,'1');
-        try{ localStorage.setItem('_closeLog1113', done.join('；')); }catch(e){}
-        try{ if(typeof refreshHoldings==='function') refreshHoldings(); }catch(e){}
-        try{ if(typeof _holdReport==='function') setTimeout(_holdReport,1500); }catch(e){}
-        var msg='✅ 11-13 计划清仓已执行\n'+done.join('\n');
-        try{ if(typeof uiAlert==='function') uiAlert(msg); else alert(msg); }catch(e){ try{alert(msg);}catch(_){} }
-      }
-      try{ sc.parentNode.removeChild(sc); }catch(e){}
-    };
-    document.body.appendChild(sc);
-  }
-  setTimeout(run,2500);
-  setInterval(run,60000);
-})();
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261113i'); }
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261111c'); }
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-12 15:38"></script>
+<script src="./update-check.js" data-page-upd="2026-11-13 08:38"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
