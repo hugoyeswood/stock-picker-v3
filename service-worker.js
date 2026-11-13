@@ -1,5 +1,5 @@
 /* 离线缓存：优先取最新（每天数据会变），断网时用上次缓存的 */
-const CACHE = 'stock-picker-v3-20261113g';
+const CACHE = 'stock-picker-v3-20261113k';
 const ASSETS = [
   './', './index.html', './data.json', './manifest.json', './update-check.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'
