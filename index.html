@@ -110,7 +110,7 @@
   .st-space { font-size:12px; font-weight:bold; margin-left:4px; }
   .st-warn { font-size:12px; margin-top:3px; }
   .st-ops { margin-top:5px; display:flex; gap:8px; }
-  .st-buy { padding:6px 16px; background:#c62828; color:#fff; border:none; border-radius:12px; font-size:12px; cursor:pointer; }
+  .st-buy { min-height:44px; padding:10px 20px; background:#c62828; color:#fff; border:none; border-radius:12px; font-size:15px; font-weight:600; cursor:pointer; -webkit-tap-highlight-color:transparent; }
   .st-sell { padding:6px 16px; background:#2e7d32; color:#fff; border:none; border-radius:12px; font-size:12px; cursor:pointer; }
   .st-line { font-size:13px; color:#333; margin:2px 0; }
   .st-qty { font-size:13px; color:#333; margin:2px 0; }
@@ -2347,7 +2347,7 @@ function sellAll(code,name,price){
     x.send();
   }catch(e){}
 })();
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261113n'); }
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261113o'); }
 </script>
 <script src="./update-check.js" data-page-upd="2026-11-13 09:33"></script>
 <script>
@@ -2783,7 +2783,7 @@ setInterval(_stCheck, 1000);
   纳尔 sz002825：≥9.28 挂卖；跌破 9.05 无条件走<br>
   普利特 sz002324：9.44 保本挂<br>
   <span style="color:#8a6d3b;">触发时间窗 09:31–11:30。本工具为模拟盘，不连券商；请在券商 App 自行下单。</span><br>
-  <button id="_acBtn" style="margin-top:6px;padding:6px 12px;border:0;border-radius:8px;background:#b45309;color:#fff;font-size:13px;">记为已清仓</button>
+  <button id="_acBtn" style="margin-top:8px;min-height:44px;padding:10px 16px;border:0;border-radius:8px;background:#b45309;color:#fff;font-size:13px;">记为已清仓</button>
   <span id="_acMsg" style="margin-left:8px;color:#2e7d32;"></span>
 </div>
 <script>
