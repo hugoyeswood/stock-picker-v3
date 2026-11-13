@@ -3188,8 +3188,9 @@ setInterval(_stCheck, 1000);
         if(!window.__nbAskPerm){ toast('通知组件未加载','#c62828'); return; }
         window.__nbAskPerm(function(p){
           if(p==='granted'){
-            toast('🔔 通知已开启，发送测试通知…', '#1565c0');
+            toast('🔔 已授权通知，正在发测试通知…（没收到看系统设置）', '#2e7d32');
             window.__nbNotify('🔔 通知已开启',{body:'模拟盘买卖提醒会以系统通知弹出',tag:'perm-ok'});
+            if(window.__nbSyncBtn) window.__nbSyncBtn();
           } else if(p==='denied'){
             toast('通知被系统拒绝：到「设置→应用→本应用→通知」允许后重开页面', '#c62828');
           } else if(p==='unsupported'){
@@ -3259,7 +3260,27 @@ setInterval(_stCheck, 1000);
     return {support:('Notification' in window),perm:perm(),
       sw:(navigator.serviceWorker?'yes':'no'),standalone:isStandalone(),ios:isIOS()};
   };
-  try{ if(navigator.serviceWorker && navigator.serviceWorker.register){ navigator.serviceWorker.register('./service-worker.js').catch(function(){}); } }catch(e){}
+  // 让「开启通知」按钮自己显示真实权限状态，消除误判
+  window.__nbSyncBtn=function(){
+    var btn=document.getElementById('autoNotif');
+    if(!btn) return;
+    var p=perm();
+    if(!('Notification' in window)){ btn.textContent='❌ 此浏览器不支持通知'; btn.style.background='#6d4c41'; return; }
+    if(p==='granted'){ btn.textContent='🔔 测试通知（已授权）'; btn.style.background='#2e7d32'; }
+    else if(p==='denied'){ btn.textContent='⚠️ 通知被拒·去系统设置开启'; btn.style.background='#c62828'; }
+    else if(isIOS() && !isStandalone()){ btn.textContent='📱 iPhone 需先添加到主屏幕'; btn.style.background='#ef6c00'; }
+    else { btn.textContent='🔔 开启通知'; btn.style.background='#1565c0'; }
+  };
+  window.addEventListener('load',function(){ window.__nbSyncBtn(); });
+  setInterval(function(){ window.__nbSyncBtn(); }, 3000);
+  // 报名时强制检查更新，避免手机上长期吃旧 ServiceWorker
+  try{
+    if(navigator.serviceWorker && navigator.serviceWorker.register){
+      navigator.serviceWorker.register('./service-worker.js',{updateViaCache:'none'}).then(function(reg){
+        try{ reg.update && reg.update(); }catch(e){}
+      }).catch(function(){});
+    }
+  }catch(e){}
 })();
 </script>
 </body></html>
