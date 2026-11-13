@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-12 11:52",
+ "updated": "2026-11-13 15:41",
  "days": [
   {
    "date": "2026-11-11",
@@ -77,6 +77,71 @@
      "close": 9.24,
      "prev_close": null,
      "chg": 0.87
+    }
+   ]
+  },
+  {
+   "date": "2026-11-16",
+   "stocks": [
+    {
+     "code": "sz000600",
+     "name": "建投能源",
+     "entry": 6.3,
+     "shares": 100,
+     "stop": 5.98,
+     "tp": 6.8,
+     "qty": "1手（100股）",
+     "close": null,
+     "prev_close": null,
+     "chg": null
+    },
+    {
+     "code": "sh603088",
+     "name": "宁波精达",
+     "entry": 9.52,
+     "shares": 100,
+     "stop": 9.04,
+     "tp": 10.28,
+     "qty": "1手（100股）",
+     "close": null,
+     "prev_close": null,
+     "chg": null
+    },
+    {
+     "code": "sz000417",
+     "name": "合百集团",
+     "entry": 6.21,
+     "shares": 100,
+     "stop": 5.9,
+     "tp": 6.71,
+     "qty": "1手（100股）",
+     "close": null,
+     "prev_close": null,
+     "chg": null
+    },
+    {
+     "code": "sz002090",
+     "name": "金智科技",
+     "entry": 8.59,
+     "shares": 100,
+     "stop": 8.16,
+     "tp": 9.28,
+     "qty": "1手（100股）",
+     "close": null,
+     "prev_close": null,
+     "chg": null
+    },
+    {
+     "code": "sz002093",
+     "name": "国脉科技",
+     "entry": 7.34,
+     "shares": 100,
+     "stop": 6.97,
+     "tp": 7.93,
+     "qty": "1手（100股）",
+     "close": null,
+     "prev_close": null,
+     "chg": null
     }
    ]
   }
