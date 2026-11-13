@@ -181,7 +181,7 @@
 </div>
 <div class="search-box">
   <input type="text" id="searchInput" placeholder="输入股票代码/名称，全网搜索..." onkeydown="if(event.key==='Enter')searchStocks()">
-  <button onclick="searchStocks()">🔍 搜索</button>
+  <button onclick="searchStocks()" style="min-height:44px;padding:10px 16px;font-size:14px;">🔍 搜索</button>
   <div id="searchResult"></div>
 </div>
 <div class="budget-panel" id="fundPanel"></div>
@@ -2347,7 +2347,7 @@ function sellAll(code,name,price){
     x.send();
   }catch(e){}
 })();
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261113p'); }
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261113q'); }
 </script>
 <script src="./update-check.js" data-page-upd="2026-11-13 09:33"></script>
 <script>
@@ -2617,7 +2617,7 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-
   <div style="font-size:12px;color:#555;margin-bottom:8px;">设置同步码后，持仓/资金/预警会实时上传到线上；换手机或换浏览器用同一同步码即可拉到最新持仓。同步码相当于密码，别用太简单的。</div>
   <div style="display:flex;gap:8px;align-items:center;">
     <input id="csCode" type="text" placeholder="同步码，如 jihongrun2026" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
-    <button id="csBtn" style="padding:8px 14px;border:0;border-radius:8px;background:#1a237e;color:#fff;font-size:13px;">开启</button>
+    <button id="csBtn" style="min-height:44px;padding:11px 16px;border:0;border-radius:8px;background:#1a237e;color:#fff;font-size:14px;">开启</button>
   </div>
   <div id="csMsg" style="font-size:11px;color:#888;margin-top:6px;">开启后每 30 秒自动与线上对齐，交易后立即上传。</div>
 </div>
