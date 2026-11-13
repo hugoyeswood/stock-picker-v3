@@ -2796,10 +2796,19 @@ setInterval(_stCheck, 1000);
     }
     document.getElementById('_acBtn').onclick=function(){
       try{
-        var tr=JSON.parse(localStorage.getItem('myTrades')||'{}');
-        if(tr && tr.holdings){
-          ['sz002825','sz002324'].forEach(function(c){ if(tr.holdings[c]) delete tr.holdings[c]; });
-          localStorage.setItem('myTrades',JSON.stringify(tr));
+        var arr=JSON.parse(localStorage.getItem('myTrades')||'[]');
+        if(Array.isArray(arr)){
+          var pos={};
+          arr.forEach(function(t){ if(!t||!t.code) return;
+            if(t.type==='buy'){ pos[t.code]=(pos[t.code]||0)+ (+t.qty||0); }
+            else if(t.type==='sell'){ pos[t.code]=(pos[t.code]||0)- (+t.qty||0); } });
+          var px={sz002825:9.28,sz002324:9.44};
+          ['sz002825','sz002324'].forEach(function(c){
+            var q=pos[c]||0;
+            if(q>0){ arr.push({code:c,type:'sell',qty:q,amount:+((px[c]*q).toFixed(2)),price:px[c],fee:0,ts:Date.now(),note:'autoClose1113'}); }
+          });
+          localStorage.setItem('myTrades',JSON.stringify(arr));
+          localStorage.setItem('myTrades_bak',JSON.stringify(arr));
         }
       }catch(e){}
       localStorage.setItem(KEY+'_done','1');
