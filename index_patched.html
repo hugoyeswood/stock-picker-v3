@@ -2347,7 +2347,7 @@ function sellAll(code,name,price){
     x.send();
   }catch(e){}
 })();
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261113w'); }
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261113x'); }
 </script>
 <script src="./update-check.js" data-page-upd="2026-11-13 13:33"></script>
 <script>
@@ -2845,101 +2845,150 @@ setInterval(_stCheck, 1000);
   }catch(e){}
 })();
 </script>
-<div class="card" style="margin-top:10px;padding:10px;"><div class="card-top"><div class="name">📈 个股K线</div><div class="st-date">点推荐卡「📈 K线」查看 · 分/时/日/周/月</div></div><div id="klBox" style="display:none;margin:10px 0 6px;padding:8px;background:#fff;border:1px solid #e3e6ea;border-radius:10px;"><div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><b id="klName" style="font-size:13px;color:#1a237e;">K线</b><span id="klTabs" style="margin-left:auto;display:flex;gap:3px;"><button class="kl-tab" data-p="m5" style="min-height:44px;padding:6px 10px;font-size:12px;border:1px solid #1565c0;border-radius:7px;background:#1565c0;color:#fff;">分</button><button class="kl-tab" data-p="m60" style="min-height:44px;padding:6px 10px;font-size:12px;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#333;">时</button><button class="kl-tab" data-p="day" style="min-height:44px;padding:6px 10px;font-size:12px;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#333;">日</button><button class="kl-tab" data-p="week" style="min-height:44px;padding:6px 10px;font-size:12px;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#333;">周</button><button class="kl-tab" data-p="month" style="min-height:44px;padding:6px 10px;font-size:12px;border:1px solid #cfd4da;border-radius:7px;background:#fff;color:#333;">月</button></span></div><canvas id="klCanvas" style="width:100%;height:200px;display:block;border-radius:8px;background:#fbfbfc;"></canvas><div id="klInfo" style="font-size:11px;color:#666;margin-top:4px;">点周期按钮切换</div></div></div>
 <script>
 (function(){
-  var cache=null, curCode=null, curName='', curPer='m5', loading=false;
-  function byId(id){ return document.getElementById(id); }
-  function tabs(){ return document.querySelectorAll('#klTabs .kl-tab'); }
-  function paintTab(p){
-    var list=tabs();
-    for(var i=0;i<list.length;i++){
-      var b=list[i], on=(b.getAttribute('data-p')===p);
+  var cache=null, loading=false, pending=[];
+  var PERIODS=['m5','m60','day','week','month'];
+  var LABELS={m5:'分',m60:'时',day:'日',week:'周',month:'月'};
+
+  function loadJson(cb){
+    if(cache){ cb(cache); return; }
+    pending.push(cb);
+    if(loading) return;
+    loading=true;
+    fetch('kline.json?v='+Date.now()).then(function(r){ return r.json(); }).then(function(j){
+      cache=j; loading=false;
+      var q=pending; pending=[];
+      for(var i=0;i<q.length;i++){ try{ q[i](j); }catch(e){} }
+    }).catch(function(){
+      loading=false; pending=[];
+    });
+  }
+
+  function findCard(el){
+    var n=el;
+    while(n && n!==document){
+      var cn=n.className?String(n.className):'';
+      if(cn.indexOf('st-item')>-1) return n;
+      n=n.parentNode;
+    }
+    return null;
+  }
+
+  function ensureBox(card,name){
+    var box=card.querySelector('.kl-box');
+    if(box) return box;
+    box=document.createElement('div');
+    box.className='kl-box';
+    box.style.cssText='display:none;margin:8px 0 4px;padding:8px;background:#fff;border:1px solid #e3e6ea;border-radius:10px;';
+    var t=["<div style='display:flex;align-items:center;gap:6px;margin-bottom:6px;'>",
+           "<b style='font-size:12px;color:#1a237e;'>", (name||''), " · K线</b>",
+           "<span class='kl-tabs' style='margin-left:auto;display:flex;gap:3px;'>"];
+    var i,p,on;
+    for(i=0;i<PERIODS.length;i++){
+      p=PERIODS[i]; on=(p==='m5');
+      t.push("<button class='kl-tab' data-p='"+p+"' style='min-height:44px;padding:6px 9px;font-size:12px;border:1px solid "+(on?'#1565c0':'#cfd4da')+";border-radius:7px;background:"+(on?'#1565c0':'#fff')+";color:"+(on?'#fff':'#333')+";'>"+LABELS[p]+"</button>");
+    }
+    t.push("</span></div><canvas class='kl-canvas' style='width:100%;height:180px;display:block;border-radius:8px;background:#fbfbfc;'></canvas>");
+    t.push("<div class='kl-info' style='font-size:11px;color:#666;margin-top:4px;'>加载中…</div>");
+    box.innerHTML=t.join('');
+    var ops=card.querySelector('.st-ops');
+    if(ops && ops.parentNode){ ops.parentNode.insertBefore(box, ops.nextSibling); }
+    else { card.appendChild(box); }
+    return box;
+  }
+
+  function paintTab(card,per){
+    var list=card.querySelectorAll('.kl-tab'), i, b, on;
+    for(i=0;i<list.length;i++){
+      b=list[i]; on=(b.getAttribute('data-p')===per);
       b.style.background=on?'#1565c0':'#fff';
       b.style.color=on?'#fff':'#333';
       b.style.borderColor=on?'#1565c0':'#cfd4da';
     }
   }
-  function loadJson(cb){
-    if(cache){ cb(cache); return; }
-    if(loading) return;
-    loading=true;
-    fetch('kline.json?v='+Date.now()).then(function(r){ return r.json(); }).then(function(j){
-      cache=j; loading=false; cb(j);
-    }).catch(function(){ loading=false; var e=byId('klInfo'); if(e) e.textContent='K线数据加载失败'; });
-  }
-  function draw(code){
-    var cv=byId('klCanvas'); if(!cv) return;
-    var parent=cv.parentNode, W=Math.max(240, Math.floor(parent.getBoundingClientRect().width-18));
-    var H=200, dpr=window.devicePixelRatio||1;
+
+  function draw(card){
+    var cv=card.querySelector('.kl-canvas'); if(!cv) return;
+    var info=card.querySelector('.kl-info');
+    var code=card.getAttribute('data-klcode')||'';
+    var per=card.getAttribute('data-klper')||'m5';
+    var W=Math.max(210, Math.floor(card.getBoundingClientRect().width-32));
+    var H=180, dpr=window.devicePixelRatio||1;
     cv.width=Math.floor(W*dpr); cv.height=Math.floor(H*dpr); cv.style.height=H+'px';
     var ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
     ctx.clearRect(0,0,W,H);
-    var bars=(cache&&cache.data&&cache.data[code]&&cache.data[code][curPer])||[];
-    var info=byId('klInfo');
-    if(!bars.length){ ctx.fillStyle='#999'; ctx.font='13px sans-serif'; ctx.fillText('暂无数据',W/2-28,H/2); if(info) info.textContent='该周期暂无数据'; return; }
-    var maxBars=Math.min(bars.length, 60);
+    var bars=(cache&&cache.data&&cache.data[code]&&cache.data[code][per])||[];
+    if(!bars.length){
+      ctx.fillStyle='#999'; ctx.font='12px sans-serif'; ctx.fillText('暂无数据',W/2-26,H/2);
+      if(info) info.textContent='该周期暂无数据';
+      return;
+    }
+    var maxBars=Math.min(bars.length,48);
     bars=bars.slice(bars.length-maxBars);
     var lo=Infinity, hi=-Infinity, i;
     for(i=0;i<bars.length;i++){ if(bars[i][3]<lo) lo=bars[i][3]; if(bars[i][4]>hi) hi=bars[i][4]; }
-    var padL=34, padR=6, top=12, bottom=16;
+    var padL=32, padR=4, top=8, bottom=10;
     var plotH=H-top-bottom, plotW=W-padL-padR;
-    var gap=plotW/bars.length, bw=Math.max(1.4, gap*0.62);
+    var gap=plotW/bars.length, bw=Math.max(1.2, gap*0.62);
     function y(v){ var r=(v-lo)/((hi-lo)||1); return top+plotH-r*plotH; }
     ctx.strokeStyle='#eceff2'; ctx.lineWidth=1;
     var g, yy;
-    for(g=0;g<4;g++){ yy=top+plotH*g/3; ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(W-padR,yy); ctx.stroke(); }
-    ctx.fillStyle='#8a9099'; ctx.font='10px sans-serif';
-    ctx.fillText(hi.toFixed(2), 1, top+2);
-    ctx.fillText(lo.toFixed(2), 1, top+plotH+2);
-    ctx.fillText(((hi+lo)/2).toFixed(2), 1, top+plotH/2+2);
+    for(g=0;g<3;g++){ yy=top+plotH*g/2; ctx.beginPath(); ctx.moveTo(padL,yy); ctx.lineTo(W-padR,yy); ctx.stroke(); }
+    ctx.fillStyle='#8a9099'; ctx.font='9px sans-serif';
+    ctx.fillText(hi.toFixed(2), 0, top+2);
+    ctx.fillText(lo.toFixed(2), 0, top+plotH+2);
     for(i=0;i<bars.length;i++){
       var b=bars[i], up=(b[2]>=b[1]), col=up?'#d32f2f':'#2e7d32';
       var x=padL+i*gap+bw/2;
       ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=1;
       ctx.beginPath(); ctx.moveTo(x, y(b[4])); ctx.lineTo(x, y(b[1])); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(x, y(b[2])); ctx.lineTo(x, y(b[3])); ctx.stroke();
-      var yo=y(Math.max(b[1],b[2])), yc=y(Math.min(b[1],b[2])), hh=Math.max(1.2, yc-yo);
+      var yo=y(Math.max(b[1],b[2])), yc=y(Math.min(b[1],b[2])), hh=Math.max(1.1, yc-yo);
       if(up){ ctx.strokeRect(x-bw/2, yo, bw, hh); } else { ctx.fillRect(x-bw/2, yo, bw, hh); }
     }
     var last=bars[bars.length-1];
     if(info) info.textContent='最新 '+last[0]+' · 收 '+last[2].toFixed(2)+' · 高 '+last[4].toFixed(2)+' · 低 '+last[3].toFixed(2)+' · '+bars.length+' 根';
   }
-  window.__openKline=function(code,name){
-    var box=byId('klBox'); if(!box) return;
-    box.style.display='block'; curCode=code; curName=name||'';
-    var nm=byId('klName'); if(nm) nm.textContent=(curName||code)+' · K线';
-    var info=byId('klInfo'); if(info) info.textContent='加载中…';
-    loadJson(function(j){
-      draw(curCode);
-      if(j&&j.updated&&info){ info.textContent+=' · 更新 '+j.updated; }
+
+  function openCard(btn){
+    var card=findCard(btn); if(!card) return;
+    var code=btn.getAttribute('data-code')||'';
+    var name=btn.getAttribute('data-name')||'';
+    card.setAttribute('data-klcode', code);
+    if(!card.getAttribute('data-klper')) card.setAttribute('data-klper','m5');
+    var box=ensureBox(card,name);
+    var showing=(box.style.display!=='none');
+    if(showing){ box.style.display='none'; return; }
+    box.style.display='block';
+    var info=card.querySelector('.kl-info'); if(info) info.textContent='加载中…';
+    paintTab(card, card.getAttribute('data-klper'));
+    loadJson(function(){
+      draw(card);
+      var j=cache;
+      if(j&&j.updated&&info) info.textContent+=' · 更新 '+j.updated;
     });
-    try{ box.scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){}
-  };
+  }
+
+  function switchPer(tab){
+    var card=findCard(tab); if(!card) return;
+    var per=tab.getAttribute('data-p'); if(!per) return;
+    card.setAttribute('data-klper', per);
+    paintTab(card, per);
+    loadJson(function(){ draw(card); });
+  }
+
   document.addEventListener('click', function(e){
-    var t=e.target;
-    while(t && t!==document){
-      if(t.getAttribute && t.getAttribute('data-kl')==='1'){
-        window.__openKline(t.getAttribute('data-code'), t.getAttribute('data-name'));
-        return;
+    var n=e.target;
+    while(n && n!==document){
+      if(n.getAttribute){
+        if(n.getAttribute('data-kl')==='1'){ openCard(n); return; }
+        var cn=n.className?String(n.className):'';
+        if(cn.indexOf('kl-tab')>-1 && n.getAttribute('data-p')){ switchPer(n); return; }
       }
-      t=t.parentNode;
+      n=n.parentNode;
     }
   }, false);
-  var tb=byId('klTabs');
-  if(tb){
-    tb.addEventListener('click',function(e){
-      var t=e.target; if(!t||!t.getAttribute||!t.getAttribute('data-p')) return;
-      curPer=t.getAttribute('data-p'); paintTab(curPer);
-      if(curCode) loadJson(function(){ draw(curCode); });
-    },false);
-  }
-  window.addEventListener('resize',function(){
-    var box=byId('klBox');
-    if(curCode&&box&&box.style.display!=='none') draw(curCode);
-  },false);
-  paintTab('m5');
 })();
-
 </script>
 </body></html>
