@@ -1648,9 +1648,7 @@ function fireAlert(hits){
   var msg=hits.map(function(x){ return x.name+' 现价¥'+x.price.toFixed(2)+' 已逼近止损线¥'+x.sl.toFixed(2)+'（距止损2%内）'; }).join('；');
   if(bar){ bar.innerHTML='🚨 <b>预警：</b>'+msg+' <button data-close-alert="1">关闭</button>'; bar.style.display='block'; }
   try{
-    if(Notification&&Notification.permission==='granted'){
-      new Notification('⚠️ 止损线预警', {body:msg});
-    }
+    if(window.__nbNotify){ window.__nbNotify('⚠️ 止损线预警', {body:msg, tag:'st-sl'}); }
   }catch(e){}
   try{
     var ac=new (window.AudioContext||window.webkitAudioContext)();
@@ -2188,7 +2186,7 @@ function checkAdvice(){
   var bar=document.getElementById('alertBar');
   if(bar){ bar.innerHTML='⏱ <b>持仓实时建议：</b>'+msg+' <button data-close-alert="1">关闭</button>'; bar.style.display='block'; }
   try{
-    if(window.Notification&&Notification.permission==='granted'){ new Notification(sell.length?'🚨 建议抛售':'➕ 建议加仓', {body:msg}); }
+    if(window.__nbNotify){ window.__nbNotify(sell.length?'🚨 建议抛售':'➕ 建议加仓', {body:msg}); }
   }catch(e){}
 }
 setInterval(checkAdvice, 15000); // 每15秒重算一次，状态变化立即提示
@@ -2347,7 +2345,7 @@ function sellAll(code,name,price){
     x.send();
   }catch(e){}
 })();
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261113z'); }
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261113n1'); }
 </script>
 <script src="./update-check.js" data-page-upd="2026-11-13 15:38"></script>
 <script>
@@ -2493,16 +2491,15 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-
 
   function pushNotify(msg){
     try{
-      if(!('Notification' in window)) return;
-      if(Notification.permission==='granted'){ new Notification('卖出提醒 · 自动选股小助手', {body:msg}); }
+      if(window.__nbNotify){ window.__nbNotify('卖出提醒 · 自动选股小助手', {body:msg}); }
     }catch(e){}
   }
 
   function askNotify(){
     try{
-      if(!('Notification' in window)){ if(typeof uiAlert==='function') uiAlert('当前浏览器不支持系统通知'); return; }
-      Notification.requestPermission(function(p){
-        if(typeof uiAlert==='function') uiAlert(p==='granted' ? '已开启卖出提醒，触发止损/回撤时会在系统层面提示' : '未授权通知，仍会在页面内显示红色提醒');
+      if(!window.__nbAskPerm){ if(typeof uiAlert==='function') uiAlert('当前浏览器不支持系统通知'); return; }
+      window.__nbAskPerm(function(p){
+        if(typeof uiAlert==='function') uiAlert(window.__nbPermMsg(p));
       });
     }catch(e){}
   }
@@ -2737,7 +2734,7 @@ function _stBeep(){
   }catch(e){}
 }
 function _stNotify(t){
-  try{ if(window.Notification && Notification.permission === 'granted'){ new Notification('推荐股提醒', { body: t, tag: 'stalert' }); } }catch(e){}
+  try{ if(window.__nbNotify){ window.__nbNotify('推荐股提醒', { body: t, tag: 'stalert' }); } }catch(e){}
 }
 function _stCheck(){
   try{
@@ -2771,7 +2768,7 @@ function _stCheck(){
 setInterval(_stCheck, 1000);
 (function(){
   function ask(){
-    try{ if(window.Notification && Notification.permission === 'default'){ Notification.requestPermission(); } }catch(e){}
+    try{ if(window.__nbAskPerm && ('Notification' in window) && Notification.permission === 'default'){ window.__nbAskPerm(function(){}); } }catch(e){}
     document.removeEventListener('click', ask);
   }
   document.addEventListener('click', ask);
@@ -3025,9 +3022,7 @@ setInterval(_stCheck, 1000);
     renderLog();
     toast(text,color);
     try{
-      if(window.Notification && Notification.permission==='granted'){
-        new Notification('🤖 自动交易', {body:text, tag:'auto-'+t.getTime()});
-      }
+      if(window.__nbNotify){ window.__nbNotify('🤖 自动交易', {body:text, tag:'auto-'+t.getTime()}); }
     }catch(e){}
   }
 
@@ -3190,8 +3185,21 @@ setInterval(_stCheck, 1000);
     while(n && n!==document){
       if(n.id==='autoToggle'){ window.__autoTrader.toggle(); return; }
       if(n.id==='autoNotif'){ 
-        if(window.Notification && Notification.permission!=='granted'){ Notification.requestPermission().then(function(p){ toast(p==='granted'?'🔔 通知已开启':'未开启通知：'+p, '#1565c0'); }); }
-        else { toast('通知不可用（浏览器不支持或已拒绝）','#c62828'); }
+        if(!window.__nbAskPerm){ toast('通知组件未加载','#c62828'); return; }
+        window.__nbAskPerm(function(p){
+          if(p==='granted'){
+            toast('🔔 通知已开启，发送测试通知…', '#1565c0');
+            window.__nbNotify('🔔 通知已开启',{body:'模拟盘买卖提醒会以系统通知弹出',tag:'perm-ok'});
+          } else if(p==='denied'){
+            toast('通知被系统拒绝：到「设置→应用→本应用→通知」允许后重开页面', '#c62828');
+          } else if(p==='unsupported'){
+            toast('此浏览器不支持通知，已用页面内提醒代替', '#c62828');
+          } else if(p==='ios-standalone'){
+            toast('iPhone 需先「分享→添加到主屏幕」再打开才支持通知', '#c62828');
+          } else {
+            toast('未开启通知：'+p, '#c62828');
+          }
+        });
         return;
       }
       if(n.id==='autoClearLog'){ window.__autoTrader.reset(); return; }
@@ -3203,5 +3211,55 @@ setInterval(_stCheck, 1000);
   setInterval(autoTick, 5000);
 })();
 
+</script>
+<script>
+/* 统一通知通道：Android Chrome 禁止页面内 new Notification，必须走 ServiceWorker.showNotification */
+(function(){
+  var ICON='./icons/icon-192.png';
+  function perm(){ try{ return Notification.permission; }catch(e){ return 'denied'; } }
+  function isIOS(){ return /iPad|iPhone|iPod/.test(navigator.userAgent); }
+  function isStandalone(){ return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone===true; }
+  function fb(title,o){ try{ new Notification(title,o); return true; }catch(e){ return false; } }
+  window.__nbNotify=function(title,opts){
+    opts=opts||{};
+    if(!('Notification' in window)) return false;
+    if(perm()!=='granted') return false;
+    var o={body:opts.body||'',tag:opts.tag||'nb',icon:ICON,badge:ICON,data:{url:'./'}};
+    try{
+      if(navigator.serviceWorker && navigator.serviceWorker.ready){
+        navigator.serviceWorker.ready.then(function(reg){
+          try{ reg.showNotification(title,o); }catch(e){ fb(title,o); }
+        }).catch(function(){ fb(title,o); });
+        return true;
+      }
+    }catch(e){}
+    return fb(title,o);
+  };
+  window.__nbAskPerm=function(cb){
+    cb=cb||function(){};
+    if(!('Notification' in window)){ cb('unsupported'); return; }
+    var p=perm();
+    if(p==='granted'){ cb('granted'); return; }
+    if(p==='denied'){ cb('denied'); return; }
+    if(isIOS() && !isStandalone()){ cb('ios-standalone'); return; }
+    try{
+      var r=Notification.requestPermission();
+      if(r && r.then){ r.then(function(v){ cb(v); }).catch(function(){ cb('error'); }); }
+      else { Notification.requestPermission(function(v){ cb(v); }); }
+    }catch(e){ cb('error'); }
+  };
+  window.__nbPermMsg=function(p){
+    if(p==='granted') return '已开启通知：触发止损/回撤时会以系统通知弹出';
+    if(p==='denied') return '通知被系统拒绝：请到「设置→应用→通知」允许后重开页面';
+    if(p==='unsupported') return '当前浏览器不支持系统通知，已用页面内红色提醒代替';
+    if(p==='ios-standalone') return 'iPhone 需先「分享→添加到主屏幕」再打开，才支持系统通知';
+    return '未授权通知（'+p+'），仍会在页面内显示红色提醒';
+  };
+  window.__nbDiag=function(){
+    return {support:('Notification' in window),perm:perm(),
+      sw:(navigator.serviceWorker?'yes':'no'),standalone:isStandalone(),ios:isIOS()};
+  };
+  try{ if(navigator.serviceWorker && navigator.serviceWorker.register){ navigator.serviceWorker.register('./service-worker.js').catch(function(){}); } }catch(e){}
+})();
 </script>
 </body></html>
