@@ -2595,7 +2595,7 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-
     var floatTxt=costAll>0?money(mvGood-costAll):'<span style="color:#c62828;">成本缺失，无法计算</span>';
     var floatCol=costAll>0?(mvGood-costAll>=0?'#c62828':'#2e7d32'):'#c62828';
     var badTip=badCnt?'<div style="margin-bottom:4px;color:#c62828;font-size:11px;">⚠ '+badCnt+' 条持仓缺少买入价，已不计入成本与浮动；请在「我的持仓」里重新录入买入价。</div>':'';
-    el.innerHTML=badTip+'<div style="margin-bottom:4px;">持仓成本 <b>¥'+f2(costAll)+'</b> · 市值 <b>¥'+f2(mvAll)+'</b> · 浮动 <b style="color:'+floatCol+';">'+floatTxt+'</b></div>'
+    el.innerHTML=badTip+'<div style="margin-bottom:4px;">持仓成本 <b>¥'+f2(costAll)+'</b> · 市值 <b>¥'+f2(mvGood)+'</b> · 浮动 <b style="color:'+floatCol+';">'+floatTxt+'</b></div>'
       +'<div style="margin-bottom:6px;">今日 <b>'+money(today)+'</b> · 本周 <b style="color:'+col+';">'+money(week)+'</b> / 目标 +¥'+TARGET+'（完成 '+f2(wkPct)+'%）</div>'
       +'<div style="height:7px;background:#eee;border-radius:4px;overflow:hidden;margin-bottom:6px;"><div style="width:'+bar+'%;height:7px;background:'+col+';"></div></div>'
       +rows
