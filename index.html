@@ -2347,7 +2347,7 @@ function sellAll(code,name,price){
     x.send();
   }catch(e){}
 })();
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261113k'); }
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261113l'); }
 </script>
 <script src="./update-check.js" data-page-upd="2026-11-13 08:38"></script>
 <script>
@@ -2568,13 +2568,13 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-
     var hs=getHoldings().filter(function(x){ return x.qty>0; });
     var base=loadBase();
     if(!hs.length){ el.innerHTML='<div style="color:#888;">暂无持仓。买入后这里只统计你实际持有的产品盈亏。</div>'; return; }
-    var costAll=0, mvAll=0, today=0, week=0, rows='';
+    var costAll=0, mvAll=0, mvGood=0, today=0, week=0, rows='';
     hs.forEach(function(x){
       var q0=(isFinite(+x.qty)&&+x.qty>0)?+x.qty:0;
       var c0=(!x.costBad&&isFinite(+x.cost)&&+x.cost>0)?+x.cost:0;
       var raw=px(x.code), avg=c0?c0/q0:0, p=raw||avg||0, pc=prev(x.code)||p;
       var mv=p*q0, pnl=c0?(mv-c0):null;
-      if(c0){ costAll+=c0; } mvAll+=mv; today+=raw?((p-pc)*q0):0;
+      if(c0){ costAll+=c0; mvGood+=mv; } mvAll+=mv; today+=raw?((p-pc)*q0):0;
       var wkCell='<span style="color:#999;">--</span>';
       if(raw>0){
         if(base.base[x.code]===undefined) base.base[x.code]=raw;   // 行情就绪后才记基线，避免把成本价当周初价
@@ -2592,8 +2592,8 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-
     var wkPct=week/TARGET*100, col=wkPct>=100?'#2e7d32':(wkPct>=0?'#ef6c00':'#c62828');
     var bar=Math.max(0,Math.min(100,wkPct));
     var badCnt=hs.filter(function(x){ return x.costBad||!(isFinite(+x.cost)&&+x.cost>0); }).length;
-    var floatTxt=costAll>0?money(mvAll-costAll):'<span style="color:#c62828;">成本缺失，无法计算</span>';
-    var floatCol=costAll>0?(mvAll-costAll>=0?'#c62828':'#2e7d32'):'#c62828';
+    var floatTxt=costAll>0?money(mvGood-costAll):'<span style="color:#c62828;">成本缺失，无法计算</span>';
+    var floatCol=costAll>0?(mvGood-costAll>=0?'#c62828':'#2e7d32'):'#c62828';
     var badTip=badCnt?'<div style="margin-bottom:4px;color:#c62828;font-size:11px;">⚠ '+badCnt+' 条持仓缺少买入价，已不计入成本与浮动；请在「我的持仓」里重新录入买入价。</div>':'';
     el.innerHTML=badTip+'<div style="margin-bottom:4px;">持仓成本 <b>¥'+f2(costAll)+'</b> · 市值 <b>¥'+f2(mvAll)+'</b> · 浮动 <b style="color:'+floatCol+';">'+floatTxt+'</b></div>'
       +'<div style="margin-bottom:6px;">今日 <b>'+money(today)+'</b> · 本周 <b style="color:'+col+';">'+money(week)+'</b> / 目标 +¥'+TARGET+'（完成 '+f2(wkPct)+'%）</div>'
