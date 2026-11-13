@@ -1982,7 +1982,7 @@ function waveTxt(w){
 }
 function renderShortTerm(j){
   var dateTxt=escHtml(j.date||''), tsTxt=escHtml(j.ts||'');
-  var html='<div class="card short-term"><div class="card-top"><div class="name">📈 今日短线推荐</div><div class="st-date">'+dateTxt+' 目录更新 '+(tsTxt?tsTxt:'最新')+' · 每10分钟刷新</div></div>';
+  var html='<div class="card short-term"><div class="card-top"><div class="name">📈 今日短线推荐</div><div class="st-date">'+dateTxt+' 目录更新 '+(tsTxt?tsTxt:'最新')+' · 每3分钟刷新</div></div>';
   html+='<div class="st-summary"><b>市场综述：</b>'+escHtml(j.market_summary||'')+'</div>';
   var budget=getBudget();
   // 短期优选置顶：按“预判1-2天盈利空间”降序（涨值巅峰线相对现价空间），空间相同按当日涨幅
@@ -2038,6 +2038,7 @@ function fetchStRec(){
         });
     });
 }
+var _lastStSig='';
 function refreshShortTerm(){
   var el=document.getElementById('stRecContainer'); if(!el) return;
   fetchStRec().then(function(j){
@@ -2045,6 +2046,10 @@ function refreshShortTerm(){
     var d=new Date();
     var todayStr=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
     if(j.date && j.date!==todayStr && !(j.date>todayStr)) return; // 允许当天或未来(下周一预备)名单渲染
+    // 目录内容没变就只重算线路，不重建卡片（否则频繁刷新会打断看 K 线/操作）
+    var sig=(j.date||'')+'#'+(j.ts||'')+'#'+(j.stocks||[]).map(function(x){return x.code;}).join(',');
+    if(sig===_lastStSig && el.querySelectorAll('.st-item').length){ recalcRecLines(); updateStWarn(); return; }
+    _lastStSig=sig;
     el.innerHTML=renderShortTerm(j);
     _priceMap=null; // 新渲染元素需重新收集，价格继续每秒刷新
     updateStWarn();
@@ -2052,7 +2057,7 @@ function refreshShortTerm(){
 }
 setTimeout(refreshShortTerm, 2500);   // 页面加载后先拉一次
 
-// ===== 推荐数据每10分钟按实时价重算（涨值巅峰线/跌停锋线/买入区间跟随现价） =====
+// ===== 推荐数据每3分钟按实时价重算（涨值巅峰线/跌停锋线/买入区间跟随现价） =====
 function pad2(n){ return (n<10?'0':'')+n; }
 function recalcRecLines(){
   var items=document.querySelectorAll('#stRecContainer .st-item');
@@ -2080,9 +2085,9 @@ function recalcRecLines(){
   var st=document.getElementById('stRecalc');
   if(st) st.textContent=pad2(d.getHours())+':'+pad2(d.getMinutes())+' 已复核';
 }
-setInterval(recalcRecLines, 600000); // 推荐数据每10分钟重算
+setInterval(recalcRecLines, 180000); // 推荐数据每3分钟重算
 setTimeout(recalcRecLines, 3000);
-setInterval(refreshShortTerm, 600000); // 每10分钟同步推荐目录
+setInterval(refreshShortTerm, 180000); // 每3分钟同步推荐目录
 
 // ===== 手动刷新按钮（右下角悬浮）：一键重拉推荐目录+持仓+实时行情 =====
 function manualRefreshAll(){
@@ -2529,7 +2534,7 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-
         ensureToday();
         renderTrack();
         setInterval(renderTrack, 5000);
-        setInterval(function(){ loadJson('./short_term_rec.json', function(r){ if(r){ recToday=r; ensureToday(); } }); }, 600000);
+        setInterval(function(){ loadJson('./short_term_rec.json', function(r){ if(r){ recToday=r; ensureToday(); } }); }, 180000);
       });
     });
   }
