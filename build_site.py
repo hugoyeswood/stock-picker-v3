@@ -18,6 +18,7 @@
 import akshare as ak
 import pandas as pd
 import json
+import os
 import html
 from datetime import datetime, timedelta
 
@@ -125,7 +126,7 @@ def calc_trade(code, price):
         buy_low = round(min(price, ma5), 2) if pd.notna(ma5) else round(price, 2)
         buy_high = round(price, 2)
         stop = round(price * 0.95, 2)
-        take = round(price * 1.15, 2)
+        take = round(price * 1.08, 2)
         # 风险提示
         risks = []
         up_from_low = (price - low20) / low20 * 100 if (pd.notna(low20) and low20 > 0) else 0
@@ -190,16 +191,16 @@ print(f"过滤后，当前资金买得起的沪深主板候选 {len(pool)} 只")
 # V3.1 核心思路：不追已涨透的票，只选"温和放量 + 温和上涨 + 中期趋势健康"的次日延续型标的。
 def 打分(r):
     s, why = 0, []
-    # —— 当日涨幅（分档：温和区最佳，过热倒扣）——
+    # —— 当日涨幅（分档：2026-11-12 按回测修正，0.5~2% 才是最优区，2~4% 最差）——
     if pd.notna(r["chg"]):
         if r["chg"] >= 6.0:
-            s -= 1; why.append("当日涨超6%·次日回落概率高")
+            s -= 2; why.append("当日涨超6%·次日回落概率高")
         elif r["chg"] >= 4.0:
-            s += 1; why.append("当日强势(偏热)")
+            why.append("当日强势(偏热·不加分)")
         elif r["chg"] >= 2.0:
-            s += 2; why.append("温和走强(最佳启动区)")
+            s += 1; why.append("当日偏热(2~4%·回测次日最弱)")
         elif r["chg"] >= 0.5:
-            s += 1; why.append("小幅上行")
+            s += 2; why.append("温和上行(0.5~2%·回测最优区)")
         elif r["chg"] < -2.0:
             s -= 1; why.append("当日破位")
     # —— 量能（温和放量最佳，爆量视为脉冲不加分）——
@@ -241,14 +242,16 @@ except Exception:
     BLACKLIST = set()
 
 rows = pool.to_dict("records")
+# 自检 ALERT 时门槛收紧到 8（2026-11-12 起由环境变量 PICK_THRESHOLD 控制，默认 7）
+THRESH = int(os.environ.get("PICK_THRESHOLD", "7"))
 scored = []
 for r in rows:
     s, why = 打分(r)
-    if s >= 7:
+    if s >= THRESH:
         scored.append((s, r, why))
 scored.sort(reverse=True, key=lambda x: x[0])
 top = scored[:TOP_N]
-print(f"达到信号门槛(≥7分)的有 {len(scored)} 只，取前 {TOP_N} 只")
+print(f"达到信号门槛(≥{THRESH}分)的有 {len(scored)} 只，取前 {TOP_N} 只")
 
 # ============ 7. 组装结果（含买卖点） ============
 print("正在逐只拉历史K线算买卖点（约半分钟）...")
@@ -425,7 +428,10 @@ try:
         scol = "#c62828" if (sg is not None and float(sg) >= 0) else "#2e7d32"
         sr = esc(str(s.get("reason","")))
         sbuy = esc(str(s.get("buy_range","--"))); sstop = esc(str(s.get("stop_loss","--"))); stake = esc(str(s.get("take_profit","--")))
-        st_cards += f'<div class="st-item">'
+        # entry = 推荐价基准：止盈止损一律以此计算，不得用实时现价（否则线随价格漂移、永远触发不了）
+        sentry = s.get("entry")
+        se_txt = f"{float(sentry):.2f}" if sentry is not None else (f"{float(sp):.2f}" if sp is not None else "0")
+        st_cards += f'<div class="st-item" data-entry="{se_txt}">'
         st_cards += f'  <div class="st-top"><b style="color:#1a237e;">{sn}</b>'
         st_cards += f'    <span class="st-badge">✓ 可买</span><span class="st-code">{sc}</span>'
         st_cards += f'    <span class="st-price price" data-code="{sc}" style="color:{scol};">{sp_t}</span> <span class="st-chg chg" data-code="{sc}">{sg_t}</span></div>'
@@ -445,7 +451,8 @@ try:
         st_cards += f'  <div class="st-qty">📌 建议买入股数：<b style="color:#c62828;">{st_qty}</b></div>'
         st_cards += f'  <div class="st-line">📈 涨值巅峰线：<b style="color:#2e7d32;">{stake}元</b> · 🛡 跌停锋线：<b style="color:#c62828;">{sstop}元</b></div>'
         st_cards += f'  <div class="st-ref">买入区间 <b>{sbuy}</b> · 止损 <b>{sstop}</b> · 止盈 <b>{stake}</b></div>'
-        st_cards += f'  <div class="st-warn" data-stwarn="{sc}" data-tp="{0 if sstop in ("--","") else sstop}" data-sl="{0 if stake in ("--","") else stake}"></div>'
+        # data-tp 必须存止盈、data-sl 必须存止损（此前写反，现价一过止损就误报“已达涨值巅峰”）
+        st_cards += f'  <div class="st-warn" data-stwarn="{sc}" data-tp="{0 if stake in ("--","") else stake}" data-sl="{0 if sstop in ("--","") else sstop}" data-tp0="{0 if stake in ("--","") else stake}" data-sl0="{0 if sstop in ("--","") else sstop}"></div>'
         st_cards += f'  <div class="st-ops"><button class="st-buy" data-stbuy="1" data-code="{sc}" data-name="{sn}" data-price="{sp_t.replace("¥", "") if sp_t not in ("--","") else 0}">📥 买入</button></div>'
         st_cards += f'</div>'
     st_ts = esc(str(rec.get("ts", "")))
@@ -504,9 +511,9 @@ function buildAdvice(price,chg,outer,inner,avg,volRatio,turnover,limitUp,limitDo
 HOLD_HTML = """<div class="card holdings">
   <div class="card-top"><div class="name">📊 我的持仓 · 实时跟进</div><div class="st-date">每10秒刷新</div></div>
   <div class="h-alert" id="alertBar" style="display:none"></div>
-  <div class="h-toolbar"><button onclick="enableNotify()" class="h-notify">🔔 开启预警通知</button><button onclick="showMonthReport()" class="h-notify" style="background:#e65100;">📊 本月持仓报告</button><button onclick="exportBackup()" class="h-bak">💾 备份数据</button><button onclick="importBackup()" class="h-bak" style="background:#455a64;">♻️ 恢复数据</button><span class="h-tip">点击数值可修改上涨预估/跌停峰值</span></div>
+  <div class="h-toolbar"><button onclick="enableNotify()" class="h-notify">🔔 开启预警通知</button><button onclick="showMonthReport()" class="h-notify" style="background:#e65100;">📊 本月持仓报告</button><button onclick="exportBackup()" class="h-bak">💾 备份数据</button><button onclick="importBackup()" class="h-bak" style="background:#455a64;">♻️ 恢复数据</button><span class="h-tip">点击数值可修改止盈线/止损线</span></div>
   <div id="holdingsList"><div class="h-empty">暂无持仓：搜索买入后自动实时跟进</div></div>
-  <div class="h-hint">⚠️ 模拟交易仅记录本地，不构成投资建议；页面打开时跌近跌停峰值自动预警提醒</div>
+  <div class="h-hint">⚠️ 模拟交易仅记录本地，不构成投资建议；页面打开时跌近止损线自动预警提醒</div>
 </div>
 <div class="card w-card">
   <div class="card-top"><div class="name">📡 未持股 · 波动推荐</div><div class="st-date">涨跌幅≥4%异动自动提示</div></div>
@@ -514,7 +521,7 @@ HOLD_HTML = """<div class="card holdings">
   <div class="h-hint">点击标的名查看详情与买卖建议 · 模拟交易仅记录本地，不构成投资建议</div>
 </div>"""
 
-APP_JS_HOLD = """\n// ===== 我的持仓：实时跟进 + 上涨预估 + 跌停峰值 + 跌近峰值预警 =====
+APP_JS_HOLD = """\n// ===== 我的持仓：实时跟进 + 止盈线 + 止损线 + 跌近峰值预警 =====
 function loadHS(){ try{ return JSON.parse(localStorage.getItem('myHS')||'{}'); }catch(e){ return {}; } }
 function saveHS(o){ localStorage.setItem('myHS', JSON.stringify(o)); }
 function loadAlerts(){ try{ return JSON.parse(localStorage.getItem('myAlerts')||'{}'); }catch(e){ return {}; } }
@@ -536,8 +543,8 @@ function editLine(code,kind){
   if(!one) return;
   var cost=one.cost/one.qty;
   var s=loadHS()[code]||{};
-  var cur=kind==='tp'?(s.tp||(cost*1.15).toFixed(2)):(s.sl||(cost*0.95).toFixed(2));
-  var v0=kind==='tp'?'输入上涨预估（止盈目标价）：':'输入跌停峰值（止损价）：';
+  var cur=kind==='tp'?(s.tp||(cost*1.08).toFixed(2)):(s.sl||(cost*0.95).toFixed(2));
+  var v0=kind==='tp'?'输入止盈线（止盈目标价）：':'输入止损线（止损价）：';
   uiPrompt(v0, cur, function(v){
     if(!v||isNaN(v)||parseFloat(v)<=0) return;
     var hs2=loadHS(); hs2[code]=hs2[code]||{}; hs2[code][kind]=parseFloat(v).toFixed(2); saveHS(hs2);
@@ -596,14 +603,14 @@ function refreshHoldings(){
     var cost=h.cost/h.qty;
     var lp=_lastPrice[h.code], lc=_lastChg[h.code];
     var lcTxt=lp?((lc>=0?'+':'')+lc.toFixed(2)+'%'):'', lcCol=lp?(lc>=0?'color:#d32f2f;':'color:#2e7d32;'):'';
-    var tp=s[h.code]&&s[h.code].tp?parseFloat(s[h.code].tp):cost*1.15;
+    var tp=s[h.code]&&s[h.code].tp?parseFloat(s[h.code].tp):cost*1.08;
     var sl=s[h.code]&&s[h.code].sl?parseFloat(s[h.code].sl):cost*0.95;
     var tpPct=((tp-cost)/cost*100).toFixed(1), slPct=((sl-cost)/cost*100).toFixed(1);
     html+='<div class="h-item">'+
       '<div class="h-top"><b>'+h.name+'</b><span class="st-code">'+h.code+'</span><span class="h-qty">持仓 '+h.qty+'股</span><button class="h-ops" data-holdop="open" data-code="'+h.code+'">⚙️ 操作</button></div>'+
       '<div class="h-row">成本 <b>¥'+cost.toFixed(2)+'</b> · 现价 <b class="price" data-code="'+h.code+'">'+(lp?'¥'+lp.toFixed(2):'--')+'</b> <span class="chg" data-code="'+h.code+'" style="'+lcCol+'">'+lcTxt+'</span></div>'+
-      '<div class="h-row">📈 上涨预估：<b style="color:#2e7d32;" data-edit="'+h.code+':tp" title="点击修改">¥'+tp.toFixed(2)+'（+'+tpPct+'%）</b></div>'+
-      '<div class="h-row">🛡 跌停峰值：<b style="color:#c62828;" data-edit="'+h.code+':sl" title="点击修改">¥'+sl.toFixed(2)+'（'+slPct+'%）</b></div>'+
+      '<div class="h-row">📈 止盈线：<b style="color:#2e7d32;" data-edit="'+h.code+':tp" title="点击修改">¥'+tp.toFixed(2)+'（+'+tpPct+'%）</b></div>'+
+      '<div class="h-row">🛡 止损线：<b style="color:#c62828;" data-edit="'+h.code+':sl" title="点击修改">¥'+sl.toFixed(2)+'（'+slPct+'%）</b></div>'+
       '<div class="h-pnl" id="pnl_'+h.code+'">--</div>'+
       (function(_a,_c,_q,_lp){
         var r='';
@@ -637,7 +644,7 @@ function monitorAlerts(){
     if(!p||isNaN(p)) return;
     var cost=h.cost/h.qty;
     var sl=s[h.code]&&s[h.code].sl?parseFloat(s[h.code].sl):cost*0.95;
-    var tp=s[h.code]&&s[h.code].tp?parseFloat(s[h.code].tp):cost*1.15;
+    var tp=s[h.code]&&s[h.code].tp?parseFloat(s[h.code].tp):cost*1.08;
     var line=sl*1.02;
     var a=alerts[h.code]||{};
     if(p<=line && !(a.sl && now-a.sl<1800000)){
@@ -645,17 +652,17 @@ function monitorAlerts(){
       a.sl=now; alerts[h.code]=a;
     }
     var pe=document.getElementById('pnl_'+h.code);
-    if(pe&&p>=tp&&!(a.tp && now-a.tp<1800000)){ pe.innerHTML='🎯 已到上涨预估（¥'+tp.toFixed(2)+'），考虑止盈落袋'; a.tp=now; alerts[h.code]=a; }
+    if(pe&&p>=tp&&!(a.tp && now-a.tp<1800000)){ pe.innerHTML='🎯 已到止盈线（¥'+tp.toFixed(2)+'），考虑止盈落袋'; a.tp=now; alerts[h.code]=a; }
   });
   if(hits.length){ saveAlerts(alerts); fireAlert(hits); }
 }
 function fireAlert(hits){
   var bar=document.getElementById('alertBar');
-  var msg=hits.map(function(x){ return x.name+' 现价¥'+x.price.toFixed(2)+' 已逼近跌停峰值¥'+x.sl.toFixed(2)+'（距止损2%内）'; }).join('；');
+  var msg=hits.map(function(x){ return x.name+' 现价¥'+x.price.toFixed(2)+' 已逼近止损线¥'+x.sl.toFixed(2)+'（距止损2%内）'; }).join('；');
   if(bar){ bar.innerHTML='🚨 <b>预警：</b>'+msg+' <button data-close-alert="1">关闭</button>'; bar.style.display='block'; }
   try{
     if(Notification&&Notification.permission==='granted'){
-      new Notification('⚠️ 跌停峰值预警', {body:msg});
+      new Notification('⚠️ 止损线预警', {body:msg});
     }
   }catch(e){}
   try{
@@ -669,7 +676,7 @@ function fireAlert(hits){
 function enableNotify(){
   if(!('Notification' in window)){ uiAlert('当前浏览器不支持通知，已用页面内红色预警代替'); return; }
   Notification.requestPermission().then(function(p){
-    if(p==='granted') uiAlert('✅ 预警通知已开启：价格跌近跌停峰值时会在通知栏提醒（页面需保持打开）');
+    if(p==='granted') uiAlert('✅ 预警通知已开启：价格跌近止损线时会在通知栏提醒（页面需保持打开）');
     else if(p==='denied') uiAlert('❌ 通知被拒绝，仍会用页面内红色预警');
     else uiAlert('通知权限未确认，仍会用页面内红色预警');
   }).catch(function(){ uiAlert('请求通知权限失败，仍会用页面内红色预警'); });
@@ -788,7 +795,7 @@ function renderShortTerm(j){
     var held=hasHolding(s.code);
     var hot=(arr.indexOf(s)===0)?'<span class="st-hot-badge">🔥 今日优选·1-2天看涨</span>':'';
     var spTxt=isNaN(s._sp)?'':'<span class="st-space" style="color:'+(s._sp>=0?'#c62828':'#2e7d32')+';">预判1-2天空间 '+(s._sp>=0?'+':'')+s._sp.toFixed(1)+'%</span>';
-    html+='<div class="st-item'+(arr.indexOf(s)===0?' st-hot':'')+'"><div class="st-top"><b style="color:#1a237e;">'+escHtml(s.name)+'</b>'+
+    html+='<div class="st-item'+(arr.indexOf(s)===0?' st-hot':'')+'" data-entry="'+(isNaN(parseFloat(s.entry))?(isNaN(p)?'0':p):parseFloat(s.entry))+'"><div class="st-top"><b style="color:#1a237e;">'+escHtml(s.name)+'</b>'+
       badge+hot+'<span class="st-code">'+escHtml(s.code)+'</span>'+
       spTxt+
       '<span class="st-price price" data-code="'+escHtml(s.code)+'" style="color:'+scol+';">'+priceTxt+'</span> '+
@@ -797,7 +804,7 @@ function renderShortTerm(j){
       '<div class="st-qty">📌 建议买入股数：<b style="color:#c62828;">'+escHtml(s.qty||'--')+'</b></div>'+
       '<div class="st-line">📈 涨值巅峰线：<b style="color:#2e7d32;">'+escHtml(s.take_profit||'--')+'元</b> · 🛡 跌停锋线：<b style="color:#c62828;">'+escHtml(s.stop_loss||'--')+'元</b></div>'+
       '<div class="st-ref">买入区间 <b>'+escHtml(s.buy_range||'--')+'</b> · 止损 <b>'+escHtml(s.stop_loss||'--')+'</b> · 止盈 <b>'+escHtml(s.take_profit||'--')+'</b></div>'+
-      '<div class="st-warn" data-stwarn="'+escHtml(s.code)+'" data-tp="'+escHtml(s.take_profit||'0')+'" data-sl="'+escHtml(s.stop_loss||'0')+'"></div>'+
+      '<div class="st-warn" data-stwarn="'+escHtml(s.code)+'" data-tp="'+escHtml(s.take_profit||'0')+'" data-sl="'+escHtml(s.stop_loss||'0')+'" data-tp0="'+escHtml(s.take_profit||'0')+'" data-sl0="'+escHtml(s.stop_loss||'0')+'"></div>'+
       '<div class="st-ops">'+
       '<button class="st-buy" data-stbuy="1" data-code="'+escHtml(s.code)+'" data-name="'+escHtml(s.name)+'" data-price="'+(isNaN(p)?'0':p)+'" '+(held?'style="opacity:0.5;" title="已持有，可加仓"':'')+'>'+(held?'➕ 已持有·加仓':'📥 买入')+'</button>'+
       (held?'<button class="st-sell" data-stsell="1" data-code="'+escHtml(s.code)+'">💰 卖出</button>':'')+
@@ -831,7 +838,7 @@ setTimeout(refreshShortTerm, 2500);   // 页面加载后先拉一次
 setInterval(refreshShortTerm, 900000); // 每15分钟更新推荐目录
 // ===== 持仓着重关注：每小时抛售/加仓提示 =====
 // 信号矩阵（对每只持仓股，现价用每秒实时缓存 _lastPrice）：
-//   抛售SELL：现价≤止损线×1.02（逼近跌停峰值）| 现价≥止盈目标（涨值巅峰落袋）| 当日涨幅≥9.5%（接近涨停锁利）
+//   抛售SELL：现价≤止损线×1.02（逼近止损线）| 现价≥止盈目标（涨值巅峰落袋）| 当日涨幅≥9.5%（接近涨停锁利）
 //            | 当日涨幅≥5%且累计盈利≥8%（冲高锁利）| 当日跌幅≤-5%（趋势转弱止损）
 //   加仓ADD ：累计浮亏≤-4%且当日温和回调-3%~0%（未破止损，分批摊薄）| 现价在成本±2%内且当日温和上行0~3%（启动在即）
 //            | 现价仍低于成本但当日反弹+2%~+6%（反弹确认）
@@ -841,7 +848,7 @@ function holdAdviceFor(h){
   var cost=h.cost/h.qty;
   var s=loadHS()[h.code]||{};
   var sl=s.sl?parseFloat(s.sl):cost*0.95;
-  var tp=s.tp?parseFloat(s.tp):cost*1.15;
+  var tp=s.tp?parseFloat(s.tp):cost*1.08;
   var chg=_lastChg[h.code]||0; if(isNaN(chg)) chg=0;
   var vr=_lastVol[h.code]||0; var tr=_lastTr[h.code]||0; var amp=_lastAmp[h.code]||0;
   var high=_lastHigh[h.code]||0; var low=_lastLow[h.code]||0;
@@ -850,7 +857,7 @@ function holdAdviceFor(h){
   var advice=null, why='', rule='';
   // —— 抛售 SELL：利弗莫尔（截断亏损/顶部派发/强弱转换）· 欧奈尔（目标止盈/赶顶锁利） ——
   if(p<=sl*1.02){ advice='SELL'; rule='利弗莫尔·截断亏损'; why='现价¥'+p.toFixed(2)+'破位止损线¥'+sl.toFixed(2)+'，"截断亏损，让利润奔跑"，立即离场'; }
-  else if(p>=tp){ advice='SELL'; rule='欧奈尔·目标止盈'; why='已达上涨预估¥'+tp.toFixed(2)+'，欧奈尔"+20%止盈"纪律，落袋为安'; }
+  else if(p>=tp){ advice='SELL'; rule='欧奈尔·目标止盈'; why='已达止盈线¥'+tp.toFixed(2)+'，欧奈尔"+20%止盈"纪律，落袋为安'; }
   else if(chg>=3&&chg<=7&&vr>=2.5&&amp>=8&&pullback>=3){ advice='SELL'; rule='利弗莫尔·顶部派发'; why='放量滞涨：涨'+chg.toFixed(2)+'%但量比'+vr.toFixed(1)+'、已从最高回落'+pullback.toFixed(1)+'%，主力派发，抛售'; }
   else if(pnlPct>=15&&chg>=6){ advice='SELL'; rule='欧奈尔·赶顶锁利'; why='累计盈利'+pnlPct.toFixed(1)+'%且加速赶顶（+'+chg.toFixed(2)+'%），锁定利润'; }
   else if(chg<=-5||pnlPct<=-8){ advice='SELL'; rule='利弗莫尔·强弱转换'; why='今日'+chg.toFixed(2)+'%由强转弱'+(pnlPct<=-8?('、累计浮亏'+pnlPct.toFixed(1)+'%'):'')+'，趋势转空，离场观望'; }
@@ -914,7 +921,7 @@ function openHoldOps(code){
   var price=el?parseFloat(el.textContent.replace('¥','')):0;
   var cost=one.cost/one.qty;
   var s=loadHS()[code]||{};
-  var tp=s.tp?parseFloat(s.tp):cost*1.15;
+  var tp=s.tp?parseFloat(s.tp):cost*1.08;
   var pnl=(price-cost)*one.qty-one.fee;
   var pnlTxt=price?(pnl>=0?'+':'')+pnl.toFixed(2)+'元（'+((price-cost)/cost*100>=0?'+':'')+((price-cost)/cost*100).toFixed(2)+'%）':'--';
   var tpPct=((tp-cost)/cost*100).toFixed(1);
