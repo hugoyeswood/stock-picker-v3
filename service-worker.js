@@ -1,5 +1,5 @@
 /* 离线缓存：优先取最新（每天数据会变），断网时用上次缓存的 */
-const CACHE = 'stock-picker-v3-20261113z';
+const CACHE = 'stock-picker-v3-20261113n1';
 const ASSETS = [
   './', './index.html', './data.json', './manifest.json', './update-check.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'
@@ -33,5 +33,19 @@ self.addEventListener('fetch', (e) => {
       .catch(() =>
         caches.match(e.request).then((m) => m || caches.match('./index.html'))
       )
+  );
+});
+
+// 点通知 → 打开/聚焦站点
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || './';
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const c of list) {
+        if ('focus' in c) { if (c.navigate) c.navigate(url).catch(() => {}); return c.focus(); }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(url);
+    })
   );
 });
