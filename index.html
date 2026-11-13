@@ -167,7 +167,7 @@
 (function(){ try{ if(/MicroMessenger/i.test(navigator.userAgent)){ var t=document.getElementById('wxTip'); if(t) t.style.display='block'; } }catch(e){} })();
 </script>
 <h1>今日候选清单 <span class="ver-badge">大师逻辑 V3</span></h1>
-<div class="sub">更新于 <span id="pageUpd">加载中…</span> · 数据源：腾讯 · 当前可用资金 ¥<span id="headCash">--</span> <span class="ver-badge">v20261111-V3-ES5·融合V5</span></div>
+<div class="sub">更新于 <span id="pageUpd">2026-11-13 08:38</span> · 数据源：腾讯 · 当前可用资金 ¥<span id="headCash">--</span> <span class="ver-badge">v20261111-V3-ES5·融合V5</span></div>
 <div id="errBanner" class="err-banner"></div>
 <div id="marketStatus" class="market-badge" style="display:none"></div>
 <div class="tip"><b>怎么用：</b>看卡片【状态】——"可买"按【建议买入区间】挂限价单买1手；"等回踩"别追高；"观望"先别碰。<br>
@@ -1519,7 +1519,7 @@ function editLine(code,kind){
   if(!one) return;
   var cost=one.cost/one.qty;
   var s=loadHS()[code]||{};
-  var cur=kind==='tp'?(s.tp||(cost*1.06).toFixed(2)):(s.sl||(cost*0.95).toFixed(2));
+  var cur=kind==='tp'?(s.tp||(cost*1.08).toFixed(2)):(s.sl||(cost*0.95).toFixed(2));
   var v0=kind==='tp'?'输入止盈线（止盈目标价）：':'输入止损线（止损价）：';
   uiPrompt(v0, cur, function(v){
     if(!v||isNaN(v)||parseFloat(v)<=0) return;
@@ -1579,7 +1579,7 @@ function refreshHoldings(){
     var cost=h.cost/h.qty;
     var lp=_lastPrice[h.code], lc=_lastChg[h.code];
     var lcTxt=lp?((lc>=0?'+':'')+lc.toFixed(2)+'%'):'', lcCol=lp?(lc>=0?'color:#d32f2f;':'color:#2e7d32;'):'';
-    var tp=s[h.code]&&s[h.code].tp?parseFloat(s[h.code].tp):cost*1.06;
+    var tp=s[h.code]&&s[h.code].tp?parseFloat(s[h.code].tp):cost*1.08;
     var sl=s[h.code]&&s[h.code].sl?parseFloat(s[h.code].sl):cost*0.95;
     var tpPct=((tp-cost)/cost*100).toFixed(1), slPct=((sl-cost)/cost*100).toFixed(1);
     var pc0=_lastPrev[h.code];
@@ -1630,7 +1630,7 @@ function monitorAlerts(){
     if(!p||isNaN(p)) return;
     var cost=h.cost/h.qty;
     var sl=s[h.code]&&s[h.code].sl?parseFloat(s[h.code].sl):cost*0.95;
-    var tp=s[h.code]&&s[h.code].tp?parseFloat(s[h.code].tp):cost*1.06;
+    var tp=s[h.code]&&s[h.code].tp?parseFloat(s[h.code].tp):cost*1.08;
     var line=sl*1.02;
     var a=alerts[h.code]||{};
     if(p<=line && !(a.sl && now-a.sl<1800000)){
@@ -2125,7 +2125,7 @@ function holdAdviceFor(h){
   var cost=h.cost/h.qty;
   var s=loadHS()[h.code]||{};
   var sl=s.sl?parseFloat(s.sl):cost*0.95;
-  var tp=s.tp?parseFloat(s.tp):cost*1.06;
+  var tp=s.tp?parseFloat(s.tp):cost*1.08;
   var chg=_lastChg[h.code]||0; if(isNaN(chg)) chg=0;
   var vr=_lastVol[h.code]||0; var tr=_lastTr[h.code]||0; var amp=_lastAmp[h.code]||0;
   var high=_lastHigh[h.code]||0; var low=_lastLow[h.code]||0;
@@ -2259,7 +2259,7 @@ function openHoldOps(code){
   var price=el?parseFloat(el.textContent.replace('¥','')):0;
   var cost=one.cost/one.qty;
   var s=loadHS()[code]||{};
-  var tp=s.tp?parseFloat(s.tp):cost*1.06;
+  var tp=s.tp?parseFloat(s.tp):cost*1.08;
   var pnl=(price-cost)*one.qty-one.fee;
   var pnlTxt=price?(pnl>=0?'+':'')+pnl.toFixed(2)+'元（'+((price-cost)/cost*100>=0?'+':'')+((price-cost)/cost*100).toFixed(2)+'%）':'--';
   var tpPct=((tp-cost)/cost*100).toFixed(1);
@@ -2346,7 +2346,7 @@ function sellAll(code,name,price){
     x.send();
   }catch(e){}
 })();
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261111c'); }
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261113j'); }
 </script>
 <script src="./update-check.js" data-page-upd="2026-11-13 08:38"></script>
 <script>
@@ -2767,6 +2767,45 @@ setInterval(_stCheck, 1000);
     document.removeEventListener('click', ask);
   }
   document.addEventListener('click', ask);
+})();
+</script>
+
+<div id="_autoClose1113" style="display:none;margin:10px 12px;padding:10px 12px;border-radius:10px;background:#fff4e5;border:1px solid #f0c48a;font-size:13px;line-height:1.7;color:#7a4d00;">
+  <b style="color:#b45309;">今日（11-13）周五清仓提醒 · 不过周末</b><br>
+  纳尔 sz002825：≥9.28 挂卖；跌破 9.05 无条件走<br>
+  普利特 sz002324：9.44 保本挂<br>
+  <span style="color:#8a6d3b;">触发时间窗 09:31–11:30。本工具为模拟盘，不连券商；请在券商 App 自行下单。</span><br>
+  <button id="_acBtn" style="margin-top:6px;padding:6px 12px;border:0;border-radius:8px;background:#b45309;color:#fff;font-size:13px;">记为已清仓</button>
+  <span id="_acMsg" style="margin-left:8px;color:#2e7d32;"></span>
+</div>
+<script>
+(function(){
+  var KEY='autoClose1113';
+  try{
+    var d=new Date();
+    var ymd=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    if(ymd!=='2026-11-13') return;
+    var mins=d.getHours()*60+d.getMinutes();
+    if(mins<571||mins>690) return;
+    var box=document.getElementById('_autoClose1113');
+    if(!box) return;
+    box.style.display='block';
+    if(localStorage.getItem(KEY+'_done')==='1'){
+      document.getElementById('_acMsg').textContent='已记录清仓';
+      return;
+    }
+    document.getElementById('_acBtn').onclick=function(){
+      try{
+        var tr=JSON.parse(localStorage.getItem('myTrades')||'{}');
+        if(tr && tr.holdings){
+          ['sz002825','sz002324'].forEach(function(c){ if(tr.holdings[c]) delete tr.holdings[c]; });
+          localStorage.setItem('myTrades',JSON.stringify(tr));
+        }
+      }catch(e){}
+      localStorage.setItem(KEY+'_done','1');
+      document.getElementById('_acMsg').textContent='已记录清仓（模拟）';
+    };
+  }catch(e){}
 })();
 </script>
 </body></html>
