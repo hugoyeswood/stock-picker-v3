@@ -1506,8 +1506,9 @@ function getHoldings(){
   var trades=getTrades(), h={};
   trades.forEach(function(t){
     if(!h[t.code]) h[t.code]={code:t.code,name:t.name,qty:0,cost:0,fee:0};
-    if(t.type==='buy'){ h[t.code].qty+=t.qty; h[t.code].cost+=t.amount; h[t.code].fee+=t.fee; }
-    else if(t.type==='sell'){ if(h[t.code].qty>0){ var _avg=h[t.code].cost/h[t.code].qty; h[t.code].cost-=_avg*t.qty; } h[t.code].qty-=t.qty; h[t.code].fee+=t.fee; }
+    var _q=(isFinite(+t.qty)&&+t.qty>0)?+t.qty:0, _f=(isFinite(+t.fee)?+t.fee:0);
+    if(t.type==='buy'){ h[t.code].qty+=_q; if(isFinite(+t.amount)&&+t.amount>0){ h[t.code].cost+=+t.amount; } else { h[t.code].costBad=true; } h[t.code].fee+=_f; }
+    else if(t.type==='sell'){ if(h[t.code].qty>0&&!h[t.code].costBad){ var _avg=h[t.code].cost/h[t.code].qty; h[t.code].cost-=_avg*_q; } h[t.code].qty-=_q; h[t.code].fee+=_f; }
   });
   var out=[];
   for(var k in h){ if(h[k]&&h[k].qty>0) out.push(h[k]); }
@@ -2346,7 +2347,7 @@ function sellAll(code,name,price){
     x.send();
   }catch(e){}
 })();
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261113j'); }
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261113k'); }
 </script>
 <script src="./update-check.js" data-page-upd="2026-11-13 08:38"></script>
 <script>
@@ -2569,25 +2570,32 @@ if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-
     if(!hs.length){ el.innerHTML='<div style="color:#888;">暂无持仓。买入后这里只统计你实际持有的产品盈亏。</div>'; return; }
     var costAll=0, mvAll=0, today=0, week=0, rows='';
     hs.forEach(function(x){
-      var raw=px(x.code), avg=x.cost/x.qty, p=raw||avg, pc=prev(x.code)||p;
-      var cost=x.cost, mv=p*x.qty, pnl=mv-cost;
-      costAll+=cost; mvAll+=mv; today+=raw?((p-pc)*x.qty):0;
+      var q0=(isFinite(+x.qty)&&+x.qty>0)?+x.qty:0;
+      var c0=(!x.costBad&&isFinite(+x.cost)&&+x.cost>0)?+x.cost:0;
+      var raw=px(x.code), avg=c0?c0/q0:0, p=raw||avg||0, pc=prev(x.code)||p;
+      var mv=p*q0, pnl=c0?(mv-c0):null;
+      if(c0){ costAll+=c0; } mvAll+=mv; today+=raw?((p-pc)*q0):0;
       var wkCell='<span style="color:#999;">--</span>';
       if(raw>0){
         if(base.base[x.code]===undefined) base.base[x.code]=raw;   // 行情就绪后才记基线，避免把成本价当周初价
-        var wv=(raw-base.base[x.code])*x.qty; week+=wv;
+        var wv=(raw-base.base[x.code])*q0; if(isFinite(wv)) week+=wv;
         wkCell='<span style="color:'+(wv>=0?'#c62828':'#2e7d32')+';">'+money(wv)+'</span>';
       }
       var c=pnl>=0?'#c62828':'#2e7d32';
       rows+='<div style="padding:3px 0;border-bottom:1px dashed #eee;">'
-        +'<div style="display:flex;justify-content:space-between;"><span>'+x.name+' <span style="color:#999;">'+x.code+'</span> · '+x.qty+'股 @'+f2(avg)+' 现'+f2(p)+'</span>'
-        +'<b style="color:'+c+';">'+money(pnl)+' ('+(cost?f2(pnl/cost*100):'0.00')+'%)</b></div>'
-        +'<div style="color:#888;font-size:11px;">本周 '+wkCell+' · 今日 '+(raw?money((p-pc)*x.qty):'--')+'</div></div>';
+        +'<div style="display:flex;justify-content:space-between;"><span>'+x.name+' <span style="color:#999;">'+x.code+'</span> · '+q0+'股 @'+(c0?f2(avg):'<span style="color:#c62828;">未录入</span>')+' 现'+f2(p)+'</span>'
+        +(c0?('<b style="color:'+c+';">'+money(pnl)+' ('+f2(pnl/c0*100)+'%)</b>'):'<b style="color:#c62828;font-size:11px;">成本缺失</b>')
+        +'</div>'
+        +'<div style="color:#888;font-size:11px;">本周 '+wkCell+' · 今日 '+(raw?money((p-pc)*q0):'--')+'</div></div>';
     });
     localStorage.setItem('spWkBase', JSON.stringify(base));
     var wkPct=week/TARGET*100, col=wkPct>=100?'#2e7d32':(wkPct>=0?'#ef6c00':'#c62828');
     var bar=Math.max(0,Math.min(100,wkPct));
-    el.innerHTML='<div style="margin-bottom:4px;">持仓成本 <b>¥'+f2(costAll)+'</b> · 市值 <b>¥'+f2(mvAll)+'</b> · 浮动 <b style="color:'+(mvAll-costAll>=0?'#c62828':'#2e7d32')+';">'+money(mvAll-costAll)+'</b></div>'
+    var badCnt=hs.filter(function(x){ return x.costBad||!(isFinite(+x.cost)&&+x.cost>0); }).length;
+    var floatTxt=costAll>0?money(mvAll-costAll):'<span style="color:#c62828;">成本缺失，无法计算</span>';
+    var floatCol=costAll>0?(mvAll-costAll>=0?'#c62828':'#2e7d32'):'#c62828';
+    var badTip=badCnt?'<div style="margin-bottom:4px;color:#c62828;font-size:11px;">⚠ '+badCnt+' 条持仓缺少买入价，已不计入成本与浮动；请在「我的持仓」里重新录入买入价。</div>':'';
+    el.innerHTML=badTip+'<div style="margin-bottom:4px;">持仓成本 <b>¥'+f2(costAll)+'</b> · 市值 <b>¥'+f2(mvAll)+'</b> · 浮动 <b style="color:'+floatCol+';">'+floatTxt+'</b></div>'
       +'<div style="margin-bottom:6px;">今日 <b>'+money(today)+'</b> · 本周 <b style="color:'+col+';">'+money(week)+'</b> / 目标 +¥'+TARGET+'（完成 '+f2(wkPct)+'%）</div>'
       +'<div style="height:7px;background:#eee;border-radius:4px;overflow:hidden;margin-bottom:6px;"><div style="width:'+bar+'%;height:7px;background:'+col+';"></div></div>'
       +rows
