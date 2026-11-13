@@ -2347,7 +2347,7 @@ function sellAll(code,name,price){
     x.send();
   }catch(e){}
 })();
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261113r'); }
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261113s'); }
 </script>
 <script src="./update-check.js" data-page-upd="2026-11-13 10:32"></script>
 <script>
@@ -2810,10 +2810,11 @@ setInterval(_stCheck, 1000);
           arr.forEach(function(t){ if(!t||!t.code) return;
             if(t.type==='buy'){ pos[t.code]=(pos[t.code]||0)+ (+t.qty||0); }
             else if(t.type==='sell'){ pos[t.code]=(pos[t.code]||0)- (+t.qty||0); } });
-          var px={sz002825:9.28,sz002324:9.44};
+          var px={};
+          ['sz002825','sz002324'].forEach(function(c){ var live=_lastPrice[c]; if(live&&live>0) px[c]=live; });
           ['sz002825','sz002324'].forEach(function(c){
-            var q=pos[c]||0;
-            if(q>0){ arr.push({code:c,type:'sell',qty:q,amount:+((px[c]*q).toFixed(2)),price:px[c],fee:0,ts:Date.now(),note:'autoClose1113'}); }
+            var q=pos[c]||0; var p2=px[c];
+            if(q>0 && p2){ arr.push({code:c,type:'sell',qty:q,amount:+((p2*q).toFixed(2)),price:p2,fee:0,ts:Date.now(),note:'autoClose1113'}); }
           });
           localStorage.setItem('myTrades',JSON.stringify(arr));
           localStorage.setItem('myTrades_bak',JSON.stringify(arr));
@@ -2822,6 +2823,25 @@ setInterval(_stCheck, 1000);
       localStorage.setItem(KEY+'_done','1');
       document.getElementById('_acMsg').textContent='已记录清仓（模拟）';
     };
+  }catch(e){}
+})();
+</script>
+
+<script>
+// ===== 一次性结算修正：11-13 清仓的已实现亏损未入账，导致账面虚高 =====
+(function(){
+  try{
+    var K='autoClose1113';
+    if(localStorage.getItem(K+'_done')!=='1') return;
+    if(localStorage.getItem(K+'_settle')==='1') return;
+    // 纳尔 1200股 成本9.29 → 现价9.07 = -264.00
+    // 普利特 1100股 成本9.44 → 现价9.26 = -198.00
+    var realized=-462.00;
+    var cash=parseFloat(localStorage.getItem('myBudget'));
+    if(isNaN(cash)||cash<=0) cash=10000;
+    localStorage.setItem('myBudget', (cash+realized).toFixed(2));
+    localStorage.setItem(K+'_settle','1');
+    localStorage.setItem('myRealized1113', realized.toFixed(2));
   }catch(e){}
 })();
 </script>
