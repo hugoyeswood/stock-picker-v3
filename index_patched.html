@@ -3288,4 +3288,133 @@ setInterval(_stCheck, 1000);
   }catch(e){}
 })();
 </script>
+
+<script>
+/* ===== 跨设备账本同步（电脑/手机颗粒度一致）=====
+   通道：ntfy 单 topic，JSON 直传，<4KB；
+   规则：本地任一账本键变更 → 2.5s 防抖上行；每 45s 下拉；30 分钟心跳续命。
+   冲突：以 at（毫秒时间戳）大者为准，后写覆盖。 */
+(function(){
+  var TOPIC='https://ntfy.sh/spv3acc2-u81058-x7k2m9q-5c8e1f3a7d9b2e6f';
+  var KEYS=['myTrades','myBudget','myPrincipal','myPrincipalSet','myHS','myAlerts',
+            'myRealized1113','autoClose1113','autoTradeOn','myAutoLog','autoBuyDay',
+            'spWkBase','myAdviceHour'];
+  var _si=Storage.prototype.setItem, applying=false, timer=null, lastAt=0, busy=false, bar=null;
+  function devId(){
+    var k='__devId', v=null; try{ v=localStorage.getItem(k); }catch(e){}
+    if(!v){ v='d'+Math.random().toString(36).slice(2,8); try{ _si.call(localStorage,k,v); }catch(e){} }
+    return v;
+  }
+  var DEV=devId();
+  function hhmm(ms){ var d=new Date(ms||Date.now()); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); }
+  function setBar(t,ok){
+    if(!bar) return; bar.textContent='☁️ '+t;
+    bar.style.background = ok===false ? '#c62828' : (ok===true?'#2e7d32':'#1565c0');
+  }
+  function snap(){ var d={}; for(var i=0;i<KEYS.length;i++){ var v=null; try{v=localStorage.getItem(KEYS[i]);}catch(e){} if(v!==null) d[KEYS[i]]=v; } return d; }
+  function build(){
+    var d=snap();
+    function trim(k,n){ try{ var a=JSON.parse(d[k]||'[]'); if(Array.isArray(a)&&a.length>n) d[k]=JSON.stringify(a.slice(-n)); }catch(e){} }
+    trim('myTrades',80); trim('myAutoLog',15);
+    var p={v:1,at:Date.now(),src:DEV,d:d};
+    var s=JSON.stringify(p);
+    if(s.length>3800){ trim('myTrades',40); trim('myAutoLog',8); s=JSON.stringify(p); }
+    if(s.length>3800){ trim('myTrades',20); trim('myAutoLog',5); trim('myAlerts',10); s=JSON.stringify(p); }
+    return s;
+  }
+  function push(){
+    if(applying) return;
+    try{
+      busy=true; var body=build();
+      fetch(TOPIC,{method:'POST',headers:{'Title':'acc','Priority':'1','Tags':'floppy_disk'},body:body})
+        .then(function(r){ busy=false; if(r&&r.ok){ lastAt=JSON.parse(body).at; setBar('已同步 '+hhmm(),true); } else { setBar('同步被拒',false); } })
+        .catch(function(){ busy=false; setBar('同步失败',false); });
+    }catch(e){ busy=false; }
+  }
+  function mark(){ if(applying) return; if(timer) clearTimeout(timer); timer=setTimeout(push,2500); }
+  function unionArr(curStr, incStr, keyFn, cap){
+    var a=[], b=[];
+    try{ a=JSON.parse(curStr||'[]'); }catch(e){ a=[]; }
+    try{ b=JSON.parse(incStr||'[]'); }catch(e){ b=[]; }
+    if(!Array.isArray(a)) a=[]; if(!Array.isArray(b)) b=[];
+    var seen={}, out=[];
+    function add(o){ if(!o||typeof o!=='object') return; var k=keyFn(o); if(seen[k]) return; seen[k]=1; out.push(o); }
+    for(var i=0;i<b.length;i++) add(b[i]);
+    for(var j=0;j<a.length;j++) add(a[j]);
+    out.sort(function(x,y){ var k1=keyFn(x), k2=keyFn(y); return k1<k2?-1:(k1>k2?1:0); });
+    if(out.length>cap) out=out.slice(-cap);
+    return JSON.stringify(out);
+  }
+  function tradeKey(o){ return (o.d||'')+'|'+(o.c||o.code||'')+'|'+(o.q||o.qty||'')+'|'+(o.px||o.price||''); }
+  function logKey(o){ return (o.t||'')+'|'+String(o.x||o.text||'').slice(0,12); }
+  function apply(p){
+    if(!p||!p.d||!p.at) return false;
+    if(p.at<=lastAt) return false;
+    applying=true;
+    try{
+      for(var k in p.d){
+        if(!Object.prototype.hasOwnProperty.call(p.d,k) || KEYS.indexOf(k)<0) continue;
+        try{
+          if(k==='myTrades'){ _si.call(localStorage,k, unionArr(localStorage.getItem(k), p.d[k], tradeKey, 200)); }
+          else if(k==='myAutoLog'){ _si.call(localStorage,k, unionArr(localStorage.getItem(k), p.d[k], logKey, 30)); }
+          else { _si.call(localStorage,k, p.d[k]); }
+        }catch(e){}
+      }
+    }catch(e){}
+    applying=false; lastAt=p.at;
+    try{ refreshHoldings(); }catch(e){}
+    try{ refreshFundPanel(); }catch(e){}
+    try{ updatePnL(); }catch(e){}
+    try{ render(); }catch(e){}
+    setBar('已拉取 '+hhmm(p.at),true);
+    return true;
+  }
+  function pull(){
+    fetch(TOPIC+'/json?poll=1&since=all').then(function(r){ return r.text(); }).then(function(t){
+      var lines=String(t||'').trim().split('\n'), last=null;
+      for(var i=0;i<lines.length;i++){
+        try{ var o=JSON.parse(lines[i]); if(o && o.event==='message' && o.message){ var m=JSON.parse(o.message); if(m && m.d && m.at && (!last || m.at>last.at)) last=m; } }catch(e){}
+      }
+      if(last){ apply(last); }
+    }).catch(function(){});
+  }
+  // 拦截本地写入 → 触发上行
+  try{
+    Storage.prototype.setItem=function(k,v){
+      _si.call(this,k,v);
+      if(this===localStorage && !applying && KEYS.indexOf(k)>=0) mark();
+    };
+  }catch(e){}
+  // 悬浮状态胶囊（点击手动双同步）
+  function mkBar(){
+    if(document.getElementById('cldBar')){ bar=document.getElementById('cldBar'); return; }
+    bar=document.createElement('div'); bar.id='cldBar';
+    bar.style.cssText='position:fixed;right:12px;bottom:168px;z-index:9999;background:#1565c0;color:#fff;'
+      +'font-size:12px;padding:0 14px;height:44px;line-height:44px;border-radius:22px;'
+      +'box-shadow:0 2px 10px rgba(0,0,0,.25);white-space:nowrap;';
+    bar.textContent='☁️ 同步中…';
+    bar.onclick=function(){ setBar('手动同步中…'); pull(); setTimeout(function(){ push(); },600); };
+    document.body.appendChild(bar);
+  }
+  if(document.body) mkBar(); else document.addEventListener('DOMContentLoaded',mkBar);
+  window.__cloudSync={push:push,pull:pull,dev:DEV,keys:KEYS,
+    status:function(){ return {lastAt:lastAt,at:hhmm(lastAt||0),dev:DEV}; }};
+  // 启动迁移策略：
+  //   本地已有账本（老设备）→ 先推送自己（避免被云端旧快照覆盖丢历史），6 秒后再拉；
+  //   本地为空（新设备）→ 先拉，拉不到才推。
+  function hasLocal(){ try{ return !!(localStorage.getItem('myPrincipal')||localStorage.getItem('myTrades')||localStorage.getItem('myBudget')); }catch(e){ return false; } }
+  setTimeout(function(){
+    if(hasLocal()){
+      try{ _si.call(localStorage,'__syncBak', JSON.stringify({at:Date.now(),d:snap()})); }catch(e){}
+      push();
+      setTimeout(pull,6000);
+    }else{
+      pull();
+      setTimeout(function(){ if(!lastAt) push(); },1500);
+    }
+  },900);
+  setInterval(pull,45000);
+  setInterval(function(){ if(!busy) push(); },1800000);
+})();
+</script>
 </body></html>
