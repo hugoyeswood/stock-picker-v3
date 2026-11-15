@@ -192,13 +192,14 @@
 <div class="card" id="nightCard" style="margin-top:10px;">
 <div class="card-top"><div class="name">🌙 一夜持股战法 · 尾盘扫描</div><div class="st-date" id="nightState">待扫描</div></div>
 <div class="st-summary" style="font-size:12px;color:#555;line-height:1.65;">
-按你给的 8 条实操步骤自动筛：<b>①主板 涨幅3~5%</b> ②量比≥1 ③换手适中（默认放宽到 4~15%）④流通市值 50~200亿 ⑤尾盘量能抬升 ⑥趋势向上且收在高位 ⑦全程均价线上方 ⑧尾盘创新高、回踩均价不破。
+按你给的 8 条实操步骤自动筛：<b>①主板 涨幅3~5%</b> ②量比≥1 ③换手适中（默认放宽到 4~15%）④流通市值 50~200亿 ⑤尾盘量能抬升 ⑥趋势向上且收在高位 ⑦全程均价线上方 ⑧尾盘创新高、回踩均价不破。<br><b>⑨风控：上证当日跌幅 &gt;1% → 今日不做。</b>
 <b style="color:#c62828;">纪律：次日早盘（09:35-10:30）择机离场，不恋战。</b> 模拟盘参考，不构成投资建议。
 </div>
 <div class="st-ops" style="display:flex;gap:8px;flex-wrap:wrap;">
   <button id="nightScan" class="st-buy" style="background:#5d4037;min-height:44px;">🔍 立即扫描</button>
   <button id="nightMode" class="st-buy" style="background:#795548;min-height:44px;">换手：4~15%</button>
 </div>
+<div id="nightIdx" style="margin-top:8px;"></div>
 <div id="nightBody" style="margin-top:8px;"><div style="color:#999;font-size:12px;">点「立即扫描」，从当前页面的候选池 + 自选股里筛一遍。</div></div>
 <div id="nightHist" style="margin-top:10px;"></div>
 </div>
@@ -2365,7 +2366,7 @@ function sellAll(code,name,price){
     x.send();
   }catch(e){}
 })();
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261114n1'); }
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261115n1'); }
 </script>
 <script src="./update-check.js" data-page-upd="2026-11-13 15:38"></script>
 <script>
@@ -3581,7 +3582,7 @@ setInterval(_stCheck, 1000);
     body.innerHTML = '<div style="font-size:12px;color:#555;margin-bottom:6px;">扫描 '+list.length+' 只 · <b style="color:#c62828;">可介入 '+pass+'</b> · 观察 '+watch+'</div>' + html;
   }
 
-  function scan(){
+  function doScan(){
     var st = $('nightState');
     var list0 = pool(), rows = [], pending = [], susp = 0;
     if (!list0.length){ $('nightBody').innerHTML = '<div style="color:#999;font-size:12px;">池子为空。</div>'; return; }
@@ -3627,6 +3628,12 @@ setInterval(_stCheck, 1000);
         r.grade = required ? (nice>=2 ? 2 : 1) : 0;
         r.miss = miss.join('；');
       }
+      if (IDX && IDX.chg <= -1){
+        for (var z3=0; z3<rows.length; z3++){
+          rows[z3].grade = 0;
+          rows[z3].miss = '上证跌幅>' + '1%，风控停手';
+        }
+      }
       rows.sort(function(a,b){ return (b.grade-a.grade) || (b.chg-a.chg); });
       render(rows);
       st.textContent = '已扫描 '+rows.length+' 只'+(susp?(' · 停牌'+susp):'')+' · '+hm();
@@ -3655,6 +3662,53 @@ setInterval(_stCheck, 1000);
       })(pending[q]);
     }
     setTimeout(function(){ if(left>0){ left = 0; finalize(); } }, 10000);
+  }
+
+  var IDX = null;
+
+  function loadIndex(cb){
+    try{
+      var s = document.createElement('script');
+      s.src = 'https://qt.gtimg.cn/q=sh000001&_=' + Date.now();
+      var done = false;
+      function fin(v){ if(done) return; done = true; try{ if(s.parentNode) s.parentNode.removeChild(s); }catch(e){} cb(v); }
+      s.onload = function(){
+        var t = window['v_sh000001'] || '';
+        var f = String(t).split('~');
+        fin({ chg: num(f[32]), px: num(f[3]), name: String(f[1] || '上证指数') });
+      };
+      s.onerror = function(){ fin(null); };
+      setTimeout(function(){ fin(null); }, 6000);
+      document.body.appendChild(s);
+    }catch(e){ cb(null); }
+  }
+
+  function paintIdx(){
+    var host = $('nightIdx');
+    if (!host) return;
+    if (!IDX){
+      host.innerHTML = '<div style="font-size:12px;color:#999;padding:4px 0;">大盘状态读取失败（不影响单票判定）</div>';
+      return;
+    }
+    var bad = IDX.chg <= -1;
+    host.innerHTML = '<div style="font-size:12px;padding:6px 8px;border-radius:6px;margin-bottom:8px;line-height:1.6;'
+      + (bad ? 'background:#ffebee;border:1px solid #ffcdd2;color:#c62828;'
+             : 'background:#e8f5e9;border:1px solid #c8e6c9;color:#2e7d32;')
+      + '">'
+      + (bad ? '⚠️ ' : '✅ ') + esc(IDX.name) + ' 今日 '
+      + (IDX.chg >= 0 ? '+' : '') + IDX.chg.toFixed(2) + '%（' + IDX.px.toFixed(2) + '）'
+      + (bad ? ' → 跌幅超 1%，触发风控：<b>今日不做</b>' : ' → 风控通过')
+      + '</div>';
+  }
+
+  function scan(){
+    var st = $('nightState');
+    if (st) st.textContent = '读取大盘…';
+    loadIndex(function(ix){
+      IDX = ix;
+      paintIdx();
+      doScan();
+    });
   }
 
   function readLog(){
@@ -3720,7 +3774,7 @@ setInterval(_stCheck, 1000);
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 
-  window.__nightTrader = { scan: scan, pool: pool, log: readLog, mode: function(){ return MODE; }, _minute: loadMinute, _analyze: analyze, _raw: raw };
+  window.__nightTrader = { scan: scan, pool: pool, log: readLog, mode: function(){ return MODE; }, _minute: loadMinute, _analyze: analyze, _raw: raw, idx: function(){ return IDX; }, refreshIdx: function(cb){ loadIndex(function(v){ IDX = v; paintIdx(); if(cb) cb(v); }); } };
 })();
 </script>
 
