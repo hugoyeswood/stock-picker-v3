@@ -2366,7 +2366,7 @@ function sellAll(code,name,price){
     x.send();
   }catch(e){}
 })();
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261115n2'); }
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261115n3'); }
 </script>
 <script src="./update-check.js" data-page-upd="2026-11-13 15:38"></script>
 <script>
@@ -3012,7 +3012,7 @@ setInterval(_stCheck, 1000);
 <script>
 (function(){
   var ON_KEY='autoTradeOn', LOG_KEY='myAutoLog', BUY_KEY='autoBuyDay';
-  var KELLY_CAP=1027, MAX_LOG=30;
+  var KELLY_CAP=2054, MAX_LOG=30;
   function pad(n){ return (n<10?'0':'')+n; }
   function dayStr(d){ d=d||new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
   function nowHM(){ var d=new Date(); return d.getHours()*100+d.getMinutes(); }
@@ -3062,7 +3062,7 @@ setInterval(_stCheck, 1000);
 
   function renderState(){
     var el=document.getElementById('autoState'), btn=document.getElementById('autoToggle');
-    var on=(localStorage.getItem(ON_KEY)==='1');
+    var on=(localStorage.getItem(ON_KEY)!=='0');
     if(el) el.textContent=on?'运行中 · 每5秒检查':'已关闭';
     if(el) el.style.color=on?'#2e7d32':'#999';
     if(btn){
@@ -3143,7 +3143,7 @@ setInterval(_stCheck, 1000);
   }
 
   function autoTick(){
-    if(localStorage.getItem(ON_KEY)!=='1') return;
+    if(localStorage.getItem(ON_KEY)==='0') return;
     if(!isWeekday()) return;
     var hm=nowHM();
     if(hm<935 || hm>=1450) return;
@@ -3195,7 +3195,7 @@ setInterval(_stCheck, 1000);
   }
 
   window.__autoTrader={
-    on:function(){ localStorage.setItem(ON_KEY,'1'); renderState(); notify('🤖 自动交易已开启：按凯利上限'+KELLY_CAP+'元/只，买区内买入，止盈×1.08/止损×0.95/持有1日/周五清仓','#2e7d32'); },
+    on:function(){ localStorage.setItem(ON_KEY,'1'); renderState(); notify('🤖 自动交易已开启：按全凯利上限'+KELLY_CAP+'元/只，买区内买入，止盈×1.10/止损×0.95/持有1日/周五清仓','#2e7d32'); },
     off:function(){ localStorage.setItem(ON_KEY,'0'); renderState(); notify('⏸ 自动交易已关闭','#6d4c41'); },
     toggle:function(){ (localStorage.getItem(ON_KEY)==='1')? this.off() : this.on(); },
     check:autoTick, reset:function(){ localStorage.removeItem(LOG_KEY); renderLog(); }
