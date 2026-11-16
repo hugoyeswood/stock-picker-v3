@@ -2370,7 +2370,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261116n31';
+  var BUILD='20261116n32';
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
 
@@ -2429,7 +2429,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-16 15:48"></script>
+<script src="./update-check.js" data-page-upd="2026-11-16 16:33"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -3074,6 +3074,8 @@ setInterval(_stCheck, 1000);
 (function(){
   var ON_KEY='autoTradeOn', LOG_KEY='myAutoLog', BUY_KEY='autoBuyDay';
   var KELLY_CAP=2054, MAX_LOG=30;
+  /* 三条尾盘锁利总开关：false=关闭（与 tools/guard_config.json 的 late_lock_2pct/micro_lock_06pct/tail_breakeven 保持一致）*/
+  var TAIL_LOCK=false;
   /* ===== 资金安全参数（2026-11-16：每秒计算 + 确认成交 + 确保资金安全）===== */
   var SAFE={ maxHold:3, maxPosRatio:0.60, dayLossStop:0.03, confirmSec:2, staleSec:30, maxFail:3, failCoolMin:5 };
   var _sigQ={}, _failN=0, _failAt=0;
@@ -3290,9 +3292,10 @@ setInterval(_stCheck, 1000);
       var reason=null;
       if(h.tp>0 && p>=h.tp) reason='止盈';
       else if(h.sl>0 && p<=h.sl) reason='止损';
-      else if(hm>=1440 && h.cost>0 && h.qty>0 && (p/(h.cost/h.qty)-1)>=0.02) reason='尾盘锁利';
-      else if(hm>=1430 && h.cost>0 && h.qty>0 && (p/(h.cost/h.qty)-1)>=0.006) reason='微利锁';
-      else if(hm>=1445 && h.cost>0 && h.qty>0 && p>=(h.cost/h.qty)) reason='尾盘保本';
+      /* 2026-11-16 与云端守卫统一：三条尾盘锁利默认关闭（TAIL_LOCK=false），避免误砍微赚票 */
+      else if(TAIL_LOCK && hm>=1440 && h.cost>0 && h.qty>0 && (p/(h.cost/h.qty)-1)>=0.02) reason='尾盘锁利';
+      else if(TAIL_LOCK && hm>=1430 && h.cost>0 && h.qty>0 && (p/(h.cost/h.qty)-1)>=0.006) reason='微利锁';
+      else if(TAIL_LOCK && hm>=1445 && h.cost>0 && h.qty>0 && p>=(h.cost/h.qty)) reason='尾盘保本';
       else if(isFriday() && hm>=1430) reason='周五清仓（不过周末）';
       else if(h.buyDay && h.buyDay<day && hm>=940) reason='持有满1日';
       if(!reason) return;
