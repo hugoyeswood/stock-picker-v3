@@ -1395,7 +1395,7 @@ function refreshRealtime(){
         if(!data || typeof data !== 'string') return;
         var parts = data.split('~');
         if(parts.length < 35) return;
-        var price = parseFloat(parts[3]), chg = parseFloat(parts[32]);
+        var price = parseFloat(parts[3]), chg = parseFloat(parts[33]);
         if(!price || isNaN(price)) return;
         var list = orig[real] || [];
         list.forEach(function(code){
@@ -2086,7 +2086,7 @@ function recalcRecLines(){
     var _we=it.querySelector('.st-warn'); var tp0=parseFloat(it.getAttribute('data-tp0')||(_we&&_we.getAttribute('data-tp0'))||'0');
     var sl0=parseFloat(it.getAttribute('data-sl0')||(_we&&_we.getAttribute('data-sl0'))||'0');
     if(!entry) return;
-    var tp=tp0?tp0.toFixed(2):(entry*1.08).toFixed(2);
+    var tp=tp0?tp0.toFixed(2):(entry*1.10).toFixed(2);
     var sl=sl0?sl0.toFixed(2):(entry*0.95).toFixed(2);
     var lo=(entry*0.97).toFixed(2), hi=entry.toFixed(2);
     var line=it.querySelector('.st-line');
