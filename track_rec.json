@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-13 15:41",
+ "updated": "2026-11-16 15:49",
  "days": [
   {
    "date": "2026-11-11",
@@ -91,9 +91,9 @@
      "stop": 5.98,
      "tp": 6.8,
      "qty": "1手（100股）",
-     "close": null,
+     "close": 6.38,
      "prev_close": null,
-     "chg": null
+     "chg": 1.27
     },
     {
      "code": "sh603088",
@@ -103,9 +103,9 @@
      "stop": 9.04,
      "tp": 10.28,
      "qty": "1手（100股）",
-     "close": null,
+     "close": 9.28,
      "prev_close": null,
-     "chg": null
+     "chg": -2.52
     },
     {
      "code": "sz000417",
@@ -115,9 +115,9 @@
      "stop": 5.9,
      "tp": 6.71,
      "qty": "1手（100股）",
-     "close": null,
+     "close": 6.39,
      "prev_close": null,
-     "chg": null
+     "chg": 2.9
     },
     {
      "code": "sz002090",
@@ -127,9 +127,9 @@
      "stop": 8.16,
      "tp": 9.28,
      "qty": "1手（100股）",
-     "close": null,
+     "close": 8.43,
      "prev_close": null,
-     "chg": null
+     "chg": -1.86
     },
     {
      "code": "sz002093",
@@ -139,9 +139,74 @@
      "stop": 6.97,
      "tp": 7.93,
      "qty": "1手（100股）",
+     "close": 7.27,
+     "prev_close": null,
+     "chg": -0.95
+    }
+   ]
+  },
+  {
+   "date": "2026-11-17",
+   "stocks": [
+    {
+     "code": "sh600035",
+     "name": "楚天高速",
+     "entry": 3.85,
+     "shares": 500,
+     "stop": 3.66,
+     "tp": 4.24,
+     "qty": "5手（500股）",
      "close": null,
      "prev_close": null,
-     "chg": null
+     "chg": 1.58
+    },
+    {
+     "code": "sz002445",
+     "name": "中南文化",
+     "entry": 3.32,
+     "shares": 600,
+     "stop": 3.15,
+     "tp": 3.65,
+     "qty": "6手（600股）",
+     "close": null,
+     "prev_close": null,
+     "chg": 1.53
+    },
+    {
+     "code": "sz002238",
+     "name": "天威视讯",
+     "entry": 7.17,
+     "shares": 200,
+     "stop": 6.81,
+     "tp": 7.89,
+     "qty": "2手（200股）",
+     "close": null,
+     "prev_close": null,
+     "chg": 1.41
+    },
+    {
+     "code": "sz002588",
+     "name": "史丹利",
+     "entry": 7.41,
+     "shares": 200,
+     "stop": 7.04,
+     "tp": 8.15,
+     "qty": "2手（200股）",
+     "close": null,
+     "prev_close": null,
+     "chg": 1.79
+    },
+    {
+     "code": "sh603708",
+     "name": "家家悦",
+     "entry": 9.73,
+     "shares": 200,
+     "stop": 9.24,
+     "tp": 10.7,
+     "qty": "2手（200股）",
+     "close": null,
+     "prev_close": null,
+     "chg": 1.67
     }
    ]
   }
