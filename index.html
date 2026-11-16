@@ -2370,12 +2370,18 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261116n28';
+  var BUILD='20261116n29';
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
 
   function doSwitch(){
     if(switching) return;
+    // 同一目标版本只自动切一次：防止线上 version.json 与页面未同步时无限重载
+    try{
+      var k='__swv_'+BUILD;
+      if(sessionStorage.getItem(k)==='1') return;
+      sessionStorage.setItem(k,'1');
+    }catch(e){}
     switching=true;
     try{ if(window.__cloudSync && window.__cloudSync.push) window.__cloudSync.push(); }catch(e){}
     setTimeout(function(){ try{ location.reload(); }catch(e){} }, 1800);
