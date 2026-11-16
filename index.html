@@ -2367,7 +2367,61 @@ function sellAll(code,name,price){
     x.send();
   }catch(e){}
 })();
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261116n27'); }
+/* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
+(function(){
+  if(!('serviceWorker' in navigator)) return;
+  var BUILD='20261116n28';
+  var hadCtrl=!!navigator.serviceWorker.controller;
+  var switching=false;
+
+  function doSwitch(){
+    if(switching) return;
+    switching=true;
+    try{ if(window.__cloudSync && window.__cloudSync.push) window.__cloudSync.push(); }catch(e){}
+    setTimeout(function(){ try{ location.reload(); }catch(e){} }, 1800);
+  }
+  window.__forceUpdate=function(){ doSwitch(); };
+
+  navigator.serviceWorker.addEventListener('controllerchange', function(){
+    if(!hadCtrl){ hadCtrl=true; return; }   // 首次安装不刷，避免空转
+    doSwitch();
+  });
+
+  navigator.serviceWorker.register('./service-worker.js?v='+BUILD, {updateViaCache:'none'}).then(function(reg){
+    try{ reg.update && reg.update(); }catch(e){}
+    setInterval(function(){ try{ reg.update && reg.update(); }catch(e){} }, 30000);
+    try{
+      reg.addEventListener('updatefound', function(){
+        var w=reg.installing;
+        if(!w) return;
+        w.addEventListener('statechange', function(){
+          if(w.state==='installed' && navigator.serviceWorker.controller){
+            try{ w.postMessage('SKIP_WAITING'); }catch(e){}
+          }
+        });
+      });
+    }catch(e){}
+  }).catch(function(){});
+
+  // 兜底哨兵：旧 SW 顶住页面时，页面自身也能发现线上版本已变
+  function checkVer(){
+    try{
+      var x=new XMLHttpRequest();
+      x.open('GET','./version.json?t='+new Date().getTime(),true);
+      x.timeout=8000;
+      x.onload=function(){
+        try{
+          var d=JSON.parse(x.responseText);
+          if(d && d.v && d.v!==BUILD){ doSwitch(); }
+        }catch(e){}
+      };
+      x.onerror=function(){};
+      x.send();
+    }catch(e){}
+  }
+  setTimeout(checkVer, 5000);
+  setInterval(checkVer, 60000);
+})();
 </script>
 <script src="./update-check.js" data-page-upd="2026-11-16 14:44"></script>
 <script>
@@ -3422,11 +3476,11 @@ setInterval(_stCheck, 1000);
   };
   window.addEventListener('load',function(){ window.__nbSyncBtn(); });
   setInterval(function(){ window.__nbSyncBtn(); }, 3000);
-  // 报名时强制检查更新，避免手机上长期吃旧 ServiceWorker
+  // 注册与自动升版由页首模块统一负责，此处只做一次主动检查
   try{
-    if(navigator.serviceWorker && navigator.serviceWorker.register){
-      navigator.serviceWorker.register('./service-worker.js',{updateViaCache:'none'}).then(function(reg){
-        try{ reg.update && reg.update(); }catch(e){}
+    if(navigator.serviceWorker && navigator.serviceWorker.getRegistration){
+      navigator.serviceWorker.getRegistration().then(function(reg){
+        try{ reg && reg.update && reg.update(); }catch(e){}
       }).catch(function(){});
     }
   }catch(e){}
