@@ -2366,7 +2366,7 @@ function sellAll(code,name,price){
     x.send();
   }catch(e){}
 })();
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261116n19'); }
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261116n20'); }
 </script>
 <script src="./update-check.js" data-page-upd="2026-11-13 15:38"></script>
 <script>
@@ -3352,7 +3352,7 @@ setInterval(_stCheck, 1000);
   var KEYS=['myTrades','myBudget','myPrincipal','myPrincipalSet','myHS','myAlerts','myLongHold',
             'myRealized1113','autoClose1113','autoTradeOn','myAutoLog','autoBuyDay',
             'spWkBase','myAdviceHour'];
-  var _si=Storage.prototype.setItem, applying=false, timer=null, lastAt=0, busy=false, bar=null, appliedAt=0;
+  var _si=Storage.prototype.setItem, applying=false, timer=null, lastAt=0, busy=false, bar=null, appliedAt=0, cloudOwner=null;
   function devId(){
     var k='__devId', v=null; try{ v=localStorage.getItem(k); }catch(e){}
     if(!v){ v='d'+Math.random().toString(36).slice(2,8); try{ _si.call(localStorage,k,v); }catch(e){} }
@@ -3422,7 +3422,7 @@ setInterval(_stCheck, 1000);
         if(!Object.prototype.hasOwnProperty.call(p.d,k) || KEYS.indexOf(k)<0) continue;
         try{
           if(k==='myTrades'){
-            if(isSlaveLock){ _si.call(localStorage,k, p.d[k]); }
+            if(isMasterSnap || isSlaveLock){ _si.call(localStorage,k, p.d[k]); }
             else { _si.call(localStorage,k, unionArr(localStorage.getItem(k), p.d[k], tradeKey, 200)); }
           }
           else if(k==='myAutoLog'){ _si.call(localStorage,k, unionArr(localStorage.getItem(k), p.d[k], logKey, 30)); }
@@ -3453,7 +3453,7 @@ setInterval(_stCheck, 1000);
           }
         }catch(e){}
       }
-      if(master){ apply(master); }
+      if(master){ cloudOwner=master.owner; apply(master); }
       else if(last){ apply(last); }
     }).catch(function(){});
   }
@@ -3490,6 +3490,10 @@ setInterval(_stCheck, 1000);
       var owner=null,lock='0';
       try{ owner=localStorage.getItem('__syncOwner'); lock=localStorage.getItem('__syncLock')||'0'; }catch(e){}
       if(lock==='1'&&owner&&owner!==DEV){ return; }   // 已认定为从机 → 只读镜像
+      if(cloudOwner && cloudOwner!==DEV){             // 云端已有主人且不是本机 → 自动降为从机，永不抢主
+        try{ _si.call(localStorage,'__syncLock','1'); _si.call(localStorage,'__syncOwner',cloudOwner); }catch(e){}
+        return;
+      }
       if(!hasLocal() && lastAt) return;                // 新设备已拉到数据 → 不必推
       push();
     },4500);
