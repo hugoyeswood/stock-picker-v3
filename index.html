@@ -2366,7 +2366,7 @@ function sellAll(code,name,price){
     x.send();
   }catch(e){}
 })();
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261116n8'); }
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261116n9'); }
 </script>
 <script src="./update-check.js" data-page-upd="2026-11-13 15:38"></script>
 <script>
@@ -3182,10 +3182,14 @@ setInterval(_stCheck, 1000);
       var reason=null;
       if(h.tp>0 && p>=h.tp) reason='止盈';
       else if(h.sl>0 && p<=h.sl) reason='止损';
+      else if(hm>=1440 && h.cost>0 && h.qty>0 && (p/(h.cost/h.qty)-1)>=0.02) reason='尾盘锁利';
       else if(isFriday() && hm>=1430) reason='周五清仓（不过周末）';
       else if(h.buyDay && h.buyDay<day && hm>=940) reason='持有满1日';
       if(reason) autoSell(h.code,h.name,p,h.qty,reason,h);
     });
+
+    // --- 尾盘不建仓：14:40 后只卖不买，避免锁利卖出后被自动买回 ---
+    if(hm>=1440) return;
 
     // --- 大盘风控闸：上证跌幅 ≤ -1% 时当日不建新仓（只允许卖出）---
     var idxc = window.__IDX_CHG;
