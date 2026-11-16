@@ -3142,6 +3142,27 @@ setInterval(_stCheck, 1000);
     return out;
   }
 
+  // ===== 大盘风控数据源：上证指数每60秒轮询一次，供自动交易闸门同步读取 =====
+  window.__IDX_CHG = null;
+  function pollIdxChg(){
+    try{
+      var s=document.createElement('script');
+      s.src='https://qt.gtimg.cn/q=sh000001&_='+Date.now();
+      s.onload=function(){
+        try{
+          var t=window['v_sh000001']||'';
+          var f=String(t).split('~');
+          if(f.length>4){ var p=parseFloat(f[3]), pc=parseFloat(f[4]); if(p>0&&pc>0){ window.__IDX_CHG=(p/pc-1)*100; } }
+        }catch(e){}
+        try{ s.parentNode && s.parentNode.removeChild(s); }catch(e){}
+      };
+      s.onerror=function(){ try{ s.parentNode && s.parentNode.removeChild(s); }catch(e){} };
+      document.head.appendChild(s);
+    }catch(e){}
+  }
+  setTimeout(pollIdxChg, 1200);
+  setInterval(pollIdxChg, 60000);
+
   function autoTick(){
     if(localStorage.getItem(ON_KEY)==='0') return;
     if(!isWeekday()) return;
@@ -3165,6 +3186,13 @@ setInterval(_stCheck, 1000);
       else if(h.buyDay && h.buyDay<day && hm>=940) reason='持有满1日';
       if(reason) autoSell(h.code,h.name,p,h.qty,reason,h);
     });
+
+    // --- 大盘风控闸：上证跌幅 ≤ -1% 时当日不建新仓（只允许卖出）---
+    var idxc = window.__IDX_CHG;
+    if(typeof idxc === 'number' && idxc <= -1){
+      if(st){ st.textContent='风控停手 · 上证 '+idxc.toFixed(2)+'%（今日不建仓）'; st.style.color='#c62828'; }
+      return;
+    }
 
     // --- 周五不建仓 ---
     if(isFriday()) return;
