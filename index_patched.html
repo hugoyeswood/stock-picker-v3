@@ -167,7 +167,7 @@
 (function(){ try{ if(/MicroMessenger/i.test(navigator.userAgent)){ var t=document.getElementById('wxTip'); if(t) t.style.display='block'; } }catch(e){} })();
 </script>
 <h1>今日候选清单 <span class="ver-badge">大师逻辑 V3</span></h1>
-<div class="sub">更新于 <span id="pageUpd">2026-11-16 13:31</span> · 数据源：腾讯 · 当前可用资金 ¥<span id="headCash">--</span> <span class="ver-badge">v20261116-V3-ES5·融合V5</span></div>
+<div class="sub">更新于 <span id="pageUpd">2026-11-16 14:12</span> · 数据源：腾讯 · 当前可用资金 ¥<span id="headCash">--</span> <span class="ver-badge">v20261116-V3-ES5·融合V5</span></div>
 <div id="errBanner" class="err-banner"></div>
 <div id="marketStatus" class="market-badge" style="display:none"></div>
 <div class="tip"><b>怎么用：</b>看卡片【状态】——"可买"按【建议买入区间】挂限价单，单只不超过2054元买足手数；"等回踩"别追高；"观望"先别碰。<br>
@@ -1397,6 +1397,7 @@ function refreshRealtime(){
         if(parts.length < 35) return;
         var price = parseFloat(parts[3]), chg = parseFloat(parts[32]);
         if(!price || isNaN(price)) return;
+        window.__lastTickAt = Date.now();
         var list = orig[real] || [];
         list.forEach(function(code){
           var pe = m.p[code], ce = m.c[code];
@@ -2366,9 +2367,9 @@ function sellAll(code,name,price){
     x.send();
   }catch(e){}
 })();
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261116n23'); }
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261116n24'); }
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-16 13:31"></script>
+<script src="./update-check.js" data-page-upd="2026-11-16 14:12"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -3013,6 +3014,9 @@ setInterval(_stCheck, 1000);
 (function(){
   var ON_KEY='autoTradeOn', LOG_KEY='myAutoLog', BUY_KEY='autoBuyDay';
   var KELLY_CAP=2054, MAX_LOG=30;
+  /* ===== 资金安全参数（2026-11-16：每秒计算 + 确认成交 + 确保资金安全）===== */
+  var SAFE={ maxHold:3, maxPosRatio:0.60, dayLossStop:0.03, confirmSec:3, staleSec:30, maxFail:3, failCoolMin:5 };
+  var _sigQ={}, _failN=0, _failAt=0;
   function pad(n){ return (n<10?'0':'')+n; }
   function dayStr(d){ d=d||new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
   function nowHM(){ var d=new Date(); return d.getHours()*100+d.getMinutes(); }
@@ -3063,7 +3067,7 @@ setInterval(_stCheck, 1000);
   function renderState(){
     var el=document.getElementById('autoState'), btn=document.getElementById('autoToggle');
     var on=(localStorage.getItem(ON_KEY)!=='0');
-    if(el) el.textContent=on?'运行中 · 每5秒检查':'已关闭';
+    if(el) el.textContent=on?'运行中 · 每秒检查':'已关闭';
     if(el) el.style.color=on?'#2e7d32':'#999';
     if(btn){
       btn.textContent=on?'⏸ 关闭自动交易':'▶ 开启自动交易';
@@ -3093,6 +3097,41 @@ setInterval(_stCheck, 1000);
     });
     var out=[]; for(var k in h){ if(h[k]&&h[k].qty>0) out.push(h[k]); }
     return out;
+  }
+
+  /* ===== 资金安全门：每次下单前必查，任一不过即拦截 ===== */
+  function safetyGate(price, qty, maxH){
+    var tk = window.__lastTickAt || 0;
+    if(!tk || (Date.now()-tk) > SAFE.staleSec*1000){
+      return '行情停更 ' + Math.floor((Date.now()-tk)/1000) + ' 秒';
+    }
+    if(_failN >= SAFE.maxFail && (Date.now()-_failAt) < SAFE.failCoolMin*60000){
+      return '连续失败 ' + _failN + ' 次，冷却中';
+    }
+    var idxc = window.__IDX_CHG;
+    if(typeof idxc === 'number' && idxc <= -1) return '上证 ' + idxc.toFixed(2) + '%';
+    var hs = autoHoldings();
+    var cap = maxH || SAFE.maxHold;
+    if(hs.length >= cap) return '已持 ' + hs.length + ' 只（上限 ' + cap + '）';
+    var f = null;
+    try{ f = calcFund(); }catch(e){}
+    if(f && f.total > 0){
+      if((f.mv + price*qty) / f.total > SAFE.maxPosRatio){
+        return '仓位将超 ' + Math.round(SAFE.maxPosRatio*100) + '%';
+      }
+      if(f.todayPnl < -(f.principal*SAFE.dayLossStop)){
+        return '日内亏损 ' + f.todayPnl.toFixed(0) + ' 元超 ' + Math.round(SAFE.dayLossStop*100) + '% 熔断';
+      }
+    }
+    return null;
+  }
+
+  /* ===== 双确认：同向信号连续 N 秒才放行，防瞬间跳价误成交 ===== */
+  function confirmSig(key, dir, reason){
+    var o = _sigQ[key];
+    if(o && o.dir===dir && o.reason===reason){ o.cnt++; }
+    else { _sigQ[key] = {dir:dir, reason:reason, cnt:1}; }
+    return _sigQ[key].cnt >= SAFE.confirmSec;
   }
 
   function autoSell(code,name,price,qty,reason,h){
@@ -3163,7 +3202,7 @@ setInterval(_stCheck, 1000);
     }catch(e){}
   }
   setTimeout(pollIdxChg, 1200);
-  setInterval(pollIdxChg, 60000);
+  setInterval(pollIdxChg, 5000);
 
   function autoTick(){
     if(localStorage.getItem(ON_KEY)==='0') return;
@@ -3172,12 +3211,12 @@ setInterval(_stCheck, 1000);
     if(hm<935 || hm>=1450) return;
 
     var st=document.getElementById('autoState');
-    if(st) st.textContent='运行中 · 检查于 '+new Date().toLocaleTimeString('zh-CN');
+    if(st) st.textContent='运行中 · 每秒检查 '+new Date().toLocaleTimeString('zh-CN');
 
     var day=dayStr();
     var holdList=autoHoldings();
 
-    // --- 卖出优先 ---
+    /* --- 卖出优先：每秒判定，同方向连续 3 秒确认后才下单 --- */
     holdList.forEach(function(h){
       var p=_lastPrice[h.code];
       if(!p||isNaN(p)||p<=0) return;
@@ -3189,24 +3228,47 @@ setInterval(_stCheck, 1000);
       else if(hm>=1445 && h.cost>0 && h.qty>0 && p>=(h.cost/h.qty)) reason='尾盘保本';
       else if(isFriday() && hm>=1430) reason='周五清仓（不过周末）';
       else if(h.buyDay && h.buyDay<day && hm>=940) reason='持有满1日';
-      if(reason) autoSell(h.code,h.name,p,h.qty,reason,h);
+      if(!reason) return;
+      if(!confirmSig('S'+h.code,'sell',reason)) return;
+      if(autoSell(h.code,h.name,p,h.qty,reason,h)){ delete _sigQ['S'+h.code]; }
     });
 
-    // --- 尾盘不建仓：14:40 后只卖不买，避免锁利卖出后被自动买回 ---
+    /* --- 尾盘不建仓：14:40 后只卖不买 --- */
     if(hm>=1440) return;
 
-    // --- 大盘风控闸：上证跌幅 ≤ -1% 时当日不建新仓（只允许卖出）---
+    /* --- 大盘风控闸：上证跌幅 ≤ -1% 当日不建新仓（数据每 5 秒刷新）--- */
     var idxc = window.__IDX_CHG;
     if(typeof idxc === 'number' && idxc <= -1){
       if(st){ st.textContent='风控停手 · 上证 '+idxc.toFixed(2)+'%（今日不建仓）'; st.style.color='#c62828'; }
       return;
     }
 
-    // --- 周五不建仓 ---
+    /* --- 周五不建仓 --- */
     if(isFriday()) return;
 
-    // --- 买入 ---
-    var cands=getCands(); if(!cands.length) return;
+    /* --- 一夜持股战法：14:15 后自动扫描（每 10 分钟最多一次），grade2 标的并入买股池 --- */
+    if(hm>=1415 && window.__nightTrader && window.__nightTrader.scan){
+      if(Date.now()-(window.__nightScanAt||0) > 600000){
+        window.__nightScanAt = Date.now();
+        try{ window.__nightTrader.scan(); }catch(e){}
+      }
+    }
+
+    /* --- 买入：候选 = 推荐 5 只 + 战法 grade2 --- */
+    var cands=getCands();
+    var night=(hm>=1415) ? (window.__nightPool||[]) : [];
+    /* 战法时段多给 1 个隔夜专用位（仓位 60% 门仍兜底，不会因放宽而超买） */
+    var maxH = SAFE.maxHold + (night.length ? 1 : 0);
+    for(var ni=0; ni<night.length; ni++){
+      var n=night[ni], dup=false;
+      for(var ci=0; ci<cands.length; ci++){ if(cands[ci].code===n.code){ dup=true; break; } }
+      if(dup) continue;
+      var npx=_lastPrice[n.code]||n.px;
+      if(!npx||npx<=0) continue;
+      cands.unshift({code:n.code, name:n.name, entry:npx, tp:+(npx*1.10).toFixed(2), sl:+(npx*0.95).toFixed(2), night:true});
+    }
+    if(!cands.length) return;
+
     var bought=[];
     try{ bought=JSON.parse(localStorage.getItem(BUY_KEY)||'{}')[day]||[]; }catch(e){ bought=[]; }
     var held={}; holdList.forEach(function(h){ held[h.code]=1; });
@@ -3216,17 +3278,32 @@ setInterval(_stCheck, 1000);
       if(held[c.code]) return;
       if(bought.indexOf(c.code)>-1) return;
       var p=_lastPrice[c.code];
+      /* 战法票可能不在行情刷新范围内，实时价缺失时用扫描价兜底 */
+      if((!p||isNaN(p)||p<=0) && c.night) p=c.entry;
       if(!p||isNaN(p)||p<=0) return;
-      if(p>c.entry*1.0 || p<c.entry*0.97) return;        // 只在买区内成交
+      if(c.night){
+        if(Math.abs(p/c.entry-1)>0.01) return;          // 战法票：现价±1%内（尾盘介入价即现价）
+      } else {
+        if(p>c.entry*1.0 || p<c.entry*0.97) return;     // 推荐票：只在买区内成交
+      }
       var qty=Math.floor(KELLY_CAP/p/100)*100;
       if(qty<100) qty=0;
       if(!qty) return;
+      var err=safetyGate(p,qty,maxH);
+      if(err){
+        if(st){ st.textContent='安全门拦下 '+c.name+'：'+err; st.style.color='#ef6c00'; }
+        return;
+      }
+      if(!confirmSig('B'+c.code,'buy','entry')) return;
       if(autoBuy(c.code,c.name,p,qty,c.entry,c.tp,c.sl)){
         bought.push(c.code);
         try{
           var o=JSON.parse(localStorage.getItem(BUY_KEY)||'{}');
           o[day]=bought; localStorage.setItem(BUY_KEY, JSON.stringify(o));
         }catch(e){}
+        _failN=0; delete _sigQ['B'+c.code];
+      } else {
+        _failN++; _failAt=Date.now();
       }
     });
   }
@@ -3267,7 +3344,7 @@ setInterval(_stCheck, 1000);
   }, false);
 
   renderState();
-  setInterval(autoTick, 5000);
+  setInterval(autoTick, 1000);
 })();
 
 </script>
@@ -3704,6 +3781,13 @@ setInterval(_stCheck, 1000);
         }
       }
       rows.sort(function(a,b){ return (b.grade-a.grade) || (b.chg-a.chg); });
+      try{
+        var g2=[];
+        for(var gi=0; gi<rows.length; gi++){
+          if(rows[gi].grade===2) g2.push({code:rows[gi].code, name:rows[gi].name, px:rows[gi].px, chg:rows[gi].chg});
+        }
+        window.__nightPool=g2;
+      }catch(e){}
       render(rows);
       st.textContent = '已扫描 '+rows.length+' 只'+(susp?(' · 停牌'+susp):'')+' · '+hm();
       renderHist();
