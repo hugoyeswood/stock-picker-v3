@@ -167,7 +167,7 @@
 (function(){ try{ if(/MicroMessenger/i.test(navigator.userAgent)){ var t=document.getElementById('wxTip'); if(t) t.style.display='block'; } }catch(e){} })();
 </script>
 <h1>今日候选清单 <span class="ver-badge">大师逻辑 V3</span></h1>
-<div class="sub">更新于 <span id="pageUpd">2026-11-16 14:21</span> · 数据源：腾讯 · 当前可用资金 ¥<span id="headCash">--</span> <span class="ver-badge">v20261116-V3-ES5·融合V5</span></div>
+<div class="sub">更新于 <span id="pageUpd">2026-11-16 14:28</span> · 数据源：腾讯 · 当前可用资金 ¥<span id="headCash">--</span> <span class="ver-badge">v20261116-V3-ES5·融合V5</span></div>
 <div id="errBanner" class="err-banner"></div>
 <div id="marketStatus" class="market-badge" style="display:none"></div>
 <div class="tip"><b>怎么用：</b>看卡片【状态】——"可买"按【建议买入区间】挂限价单，单只不超过2054元买足手数；"等回踩"别追高；"观望"先别碰。<br>
@@ -2367,9 +2367,9 @@ function sellAll(code,name,price){
     x.send();
   }catch(e){}
 })();
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261116n25'); }
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261116n26'); }
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-16 14:21"></script>
+<script src="./update-check.js" data-page-upd="2026-11-16 14:28"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -3015,7 +3015,7 @@ setInterval(_stCheck, 1000);
   var ON_KEY='autoTradeOn', LOG_KEY='myAutoLog', BUY_KEY='autoBuyDay';
   var KELLY_CAP=2054, MAX_LOG=30;
   /* ===== 资金安全参数（2026-11-16：每秒计算 + 确认成交 + 确保资金安全）===== */
-  var SAFE={ maxHold:3, maxPosRatio:0.60, dayLossStop:0.03, confirmSec:3, staleSec:30, maxFail:3, failCoolMin:5 };
+  var SAFE={ maxHold:3, maxPosRatio:0.60, dayLossStop:0.03, confirmSec:2, staleSec:30, maxFail:3, failCoolMin:5 };
   var _sigQ={}, _failN=0, _failAt=0;
   function pad(n){ return (n<10?'0':'')+n; }
   function dayStr(d){ d=d||new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
