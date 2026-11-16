@@ -2366,7 +2366,7 @@ function sellAll(code,name,price){
     x.send();
   }catch(e){}
 })();
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261116n17'); }
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./service-worker.js?v=20261116n18'); }
 </script>
 <script src="./update-check.js" data-page-upd="2026-11-13 15:38"></script>
 <script>
@@ -3408,6 +3408,7 @@ setInterval(_stCheck, 1000);
   function logKey(o){ return (o.t||'')+'|'+String(o.x||o.text||'').slice(0,12); }
   function apply(p){
     if(!p||!p.d||!p.at) return false;
+    if(p.at>Date.now()+120000) return false;
     var isMasterSnap=(p.lock==='1'&&p.owner&&p.owner!==DEV);
     if(isMasterSnap){ if(p.at<=appliedAt) return false; }
     else { if(p.at<=lastAt) return false; }
@@ -3445,7 +3446,7 @@ setInterval(_stCheck, 1000);
           var o=JSON.parse(lines[i]);
           if(o && o.event==='message' && o.message){
             var m=JSON.parse(o.message);
-            if(m && m.d && m.at){
+            if(m && m.d && m.at && m.at <= Date.now()+120000){
               if(!last || m.at>last.at) last=m;
               if(m.lock==='1' && m.owner && (!master || m.at>master.at)) master=m;
             }
