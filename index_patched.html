@@ -1013,7 +1013,11 @@ function replayLedger(){
   var cash=LT_BASE_ASSET, pos={}, dup=0, i;
   for(i=0;i<tr.length;i++){
     var t=tr[i]; if(!t||!t.code) continue;
-    var q=+t.qty||0, p=+t.price||0, amt=(+t.amount>0?+t.amount:p*q), fee=(+t.fee>0?+t.fee:0);
+    var q=+t.qty||0, p=+t.price||0, amt=(+t.amount>0?+t.amount:p*q);
+    /* 费用一律按实际扣费标准重算（佣金0.025%最低5 + 过户0.002% + 卖出印花税0.1%），
+       不再信任账本里的 fee 字段：历史上有 6 笔没写 fee，按 0 处理会让可用资金虚增 32 元。
+       与云端守卫 tools/cloud_guard.py 的 calc_cash 完全同口径，保证手机/电脑/守卫三处一个数。 */
+    var _sell=isSellT(t), fee=calcFee(amt, _sell?'sell':'buy');
     if(isBuyT(t)){
       cash-=(amt+fee);
       var o=pos[t.code]||(pos[t.code]={code:t.code,name:t.name||t.code,qty:0,amt:0,fee:0});
@@ -1055,6 +1059,8 @@ function refreshHeadMeta(){
     else if(up && window.__dataUpdated) up.textContent=String(window.__dataUpdated);
     var hc=document.getElementById('headCash');
     if(hc && typeof getBudget==='function') hc.textContent=(+getBudget()).toFixed(2);
+    var vb=document.querySelector('.ver-badge');
+    if(vb && window.__BUILD) vb.textContent='v'+String(window.__BUILD);
   }catch(e){}
 }
 function refreshFundPanel(){ refreshHeadMeta(); var el=document.getElementById('fundPanel'); if(!el) return; var f=calcFund(); var h='';
@@ -1064,6 +1070,10 @@ function refreshFundPanel(){ refreshHeadMeta(); var el=document.getElementById('
   h+='<div class="fp-row"><span class="fp-lab">持仓市值</span><span class="fp-val">¥'+f.mv.toFixed(2)+'</span></div>';
   h+='<div class="fp-row"><span class="fp-lab">今日盈亏</span><span class="fp-val '+pnlClass(f.todayPnl,'today')+'">'+pnlTxt(f.todayPnl)+'</span></div>';
   h+='<div class="fp-row"><span class="fp-lab" title="历史数据已清零，基准 = 2026-11-16 开市前总资产 ¥'+LT_BASE_ASSET.toFixed(2)+'">长期盈亏（自 2026-11-16 起）</span><span class="fp-val '+pnlClass(f.totalPnl,'total')+'">'+pnlTxt(f.totalPnl)+'</span></div>';
+  var _cn=(typeof window.__cloudCount==='number')?window.__cloudCount:null, _ca=window.__cloudAt?new Date(window.__cloudAt):null;
+  var _ct=_ca?(_ca.getMonth()+1)+'-'+_ca.getDate()+' '+('0'+_ca.getHours()).slice(-2)+':'+('0'+_ca.getMinutes()).slice(-2):'';
+  var _bad=!!window.__cloudStale;
+  h+='<div class="fp-row"><span class="fp-lab" title="本机账本必须与云端权威流水一致，不一致即为脏账本">云端账本对账</span><span class="fp-val" style="font-size:12px;color:'+(_cn===null?'#c62828':(_bad?'#ef6c00':'#2e7d32'))+';">'+(_cn===null?'未连接':'¿'.replace('¿',_cn+' 笔 · '+_ct+(_bad?'（缓存）':' 已对账')))+'</span></div>';
   el.innerHTML=h; }
 
 // ===== 持仓上报（把「我的持仓」真实数据送到服务端，供收盘自检/周目标用真实口径）=====
@@ -2438,7 +2448,8 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261117n53';
+  var BUILD='20261118n54';
+  try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
 
@@ -2497,7 +2508,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-17 15:40"></script>
+<script src="./update-check.js" data-page-upd="2026-11-18 06:00"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -3754,42 +3765,70 @@ setInterval(_stCheck, 1000);
     setBar('已拉取 '+hhmm(p.at),true);
     return true;
   }
-  function pull(){
-    fetch(TOPIC+'/json?poll=1&since=1h').then(function(r){ return r.text(); }).then(function(t){
-      var lines=String(t||'').trim().split('\n'), last=null, master=null;
-      for(var i=0;i<lines.length;i++){
-        try{
-          var o=JSON.parse(lines[i]);
-          if(o && o.event==='message' && o.message){
-            var m=JSON.parse(o.message);
-            if(m && m.d && m.at && m.at <= Date.now()+120000){
-              if(!last || m.at>last.at) last=m;
-              if(String(m.lock)==='1' && m.owner && (!master || m.at>master.at)) master=m;
-            }
+  var _LK='__lastMaster';
+  var pulling=false;
+  function saveMaster(m){ try{ _si.call(localStorage,_LK, JSON.stringify({at:m.at,lock:m.lock,owner:m.owner,d:m.d})); }catch(e){} }
+  function cachedMaster(){ try{ var v=JSON.parse(localStorage.getItem(_LK)||'null'); if(v&&v.d&&v.at) return v; }catch(e){} return null; }
+  function consumeMaster(master){
+    cloudOwner=master.owner;
+    /* 云端（守卫维护）账本是唯一权威口径：解析出各股在手股数，供前端卖出/买入闸门校验 */
+    try{
+      var _tr=master.d && master.d.myTrades;
+      if(typeof _tr==='string'){ try{ _tr=JSON.parse(_tr); }catch(e){ _tr=null; } }
+      var _pos={}, _n=0;
+      (_tr||[]).forEach(function(t){
+        if(!t||!t.code) return; _n++;
+        var q=+t.qty||0; _pos[t.code]=_pos[t.code]||0;
+        var _sell=(t.type==='sell')||(t.type===undefined&&t.auto&&t.reason);
+        if(_sell) _pos[t.code]=Math.max(0,_pos[t.code]-q); else _pos[t.code]+=q;
+      });
+      window.__cloudHold=_pos; window.__cloudAt=master.at; window.__cloudCount=_n;
+      window.__cloudStale=false;
+      try{ window.__rememberNames(_tr); }catch(e){}
+    }catch(e){}
+    saveMaster(master);
+    apply(master);
+  }
+  function parseSnaps(t){
+    var lines=String(t||'').trim().split('\n'), last=null, master=null;
+    for(var i=0;i<lines.length;i++){
+      try{
+        var o=JSON.parse(lines[i]);
+        if(o && o.event==='message' && o.message){
+          var m=JSON.parse(o.message);
+          if(m && m.d && m.at && m.at <= Date.now()+120000){
+            if(!last || m.at>last.at) last=m;
+            if(String(m.lock)==='1' && m.owner && (!master || m.at>master.at)) master=m;
           }
-        }catch(e){}
+        }
+      }catch(e){}
+    }
+    return {last:last, master:master};
+  }
+  /* 权威快照窗口：守卫数小时不推送时，1h 窗口会拉空，本机旧账本就会继续冒充实时口径
+     （手机端 可用4568.89 / 总资产9969.89 这类错误即由此而来）。故按 6h → 24h → 本地缓存 三级兜底。 */
+  function pull(){
+    if(pulling) return; pulling=true;
+    var finished=false;
+    function finish(){ if(!finished){ finished=true; pulling=false; } }
+    function useCache(){
+      var c=cachedMaster();
+      if(c && (!window.__cloudAt || c.at>window.__cloudAt)){
+        consumeMaster(c);
+        window.__cloudStale=true;
+        setBar('云端已 '+hhmm(c.at)+' 停止推送，用缓存账本 '+(window.__cloudCount||0)+' 笔对账',false);
       }
-      if(master){
-        cloudOwner=master.owner;
-        /* 云端（守卫维护）账本是唯一权威口径：解析出各股在手股数，供前端卖出/买入闸门校验，
-           本机旧账本（如 1800 股中南、早已清掉的国脉/宁波精达）不得据此发单 */
-        try{
-          var _tr=master.d && master.d.myTrades;
-          if(typeof _tr==='string'){ try{ _tr=JSON.parse(_tr); }catch(e){ _tr=null; } }
-          var _pos={}, _n=0;
-          (_tr||[]).forEach(function(t){
-            if(!t||!t.code) return; _n++;
-            var q=+t.qty||0; _pos[t.code]=_pos[t.code]||0;
-            var _sell=(t.type==='sell')||(t.type===undefined&&t.auto&&t.reason);
-            if(_sell) _pos[t.code]=Math.max(0,_pos[t.code]-q); else _pos[t.code]+=q;
-          });
-          window.__cloudHold=_pos; window.__cloudAt=master.at; window.__cloudCount=_n;
-          try{ window.__rememberNames(_tr); }catch(e){}
-        }catch(e){}
-        apply(master);
-      }
-      else if(last){ apply(last); }
-    }).catch(function(){});
+    }
+    function attempt(since, onEmpty){
+      fetch(TOPIC+'/json?poll=1&since='+since).then(function(r){ return r.text(); }).then(function(t){
+        var s=parseSnaps(t);
+        if(s.master){ consumeMaster(s.master); finish(); return; }
+        /* 无权威快照时，别的设备推的普通快照只做增量；若本地已有权威缓存则不再合入，防止幽灵单回流 */
+        if(s.last && !cachedMaster()){ apply(s.last); }
+        if(onEmpty){ onEmpty(); finish(); } else { useCache(); finish(); }
+      }).catch(function(){ if(onEmpty){ onEmpty(); } else { useCache(); } finish(); });
+    }
+    attempt('6h', function(){ attempt('24h', null); });
   }
   // 拦截本地写入 → 触发上行
   try{
