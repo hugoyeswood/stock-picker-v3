@@ -161,13 +161,14 @@
   .modal-btn.buy { background:#c62828; color:#fff; }
   .modal-btn.sell { background:#2e7d32; color:#fff; }
   .modal-btn.gray { background:#eee; color:#555; }
-  @media (max-width:420px) { .tab-btn { font-size:13px; padding:12px 2px; min-height:46px; } }</style></head><body>
+  @media (max-width:420px) { .tab-btn { font-size:13px; padding:12px 2px; min-height:46px; } }</style><style id="touch44">button{min-height:44px;} .st-buy,.st-op,.st-ops button{min-height:44px;}</style>
+</head><body>
 <div id="wxTip" style="display:none;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;border-radius:8px;padding:8px 10px;font-size:12px;margin-bottom:10px;">📱 已在微信内打开，功能完整可用；如需全屏/横屏体验，点右上角「···」→「在浏览器打开」</div>
 <script>
 (function(){ try{ if(/MicroMessenger/i.test(navigator.userAgent)){ var t=document.getElementById('wxTip'); if(t) t.style.display='block'; } }catch(e){} })();
 </script>
 <h1>今日候选清单 <span class="ver-badge">大师逻辑 V3</span></h1>
-<div class="sub">更新于 <span id="pageUpd">2026-11-16 14:44</span> · 数据源：腾讯 · 当前可用资金 ¥<span id="headCash">--</span> <span class="ver-badge">v20261116-V3-ES5·融合V5</span></div>
+<div class="sub">更新于 <span id="pageUpd">2026-11-17 08:44</span> · 数据源：腾讯 · 当前可用资金 ¥<span id="headCash">--</span> <span class="ver-badge">v20261116-V3-ES5·融合V5</span></div>
 <div id="errBanner" class="err-banner"></div>
 <div id="marketStatus" class="market-badge" style="display:none"></div>
 <div class="tip"><b>怎么用：</b>看卡片【状态】——"可买"按【建议买入区间】挂限价单，单只不超过2054元买足手数；"等回踩"别追高；"观望"先别碰。<br>
@@ -999,7 +1000,9 @@ function pnlTxt(v){ return (v>0?'+':'')+v.toFixed(2)+'元'; }
 function refreshHeadMeta(){
   try{
     var up=document.getElementById('pageUpd');
-    if(up && window.__dataUpdated) up.textContent=String(window.__dataUpdated);
+    var _pu=document.querySelector('[data-page-upd]');
+    if(up&&_pu&&_pu.getAttribute('data-page-upd')) up.textContent=_pu.getAttribute('data-page-upd');
+    else if(up && window.__dataUpdated) up.textContent=String(window.__dataUpdated);
     var hc=document.getElementById('headCash');
     if(hc && typeof getBudget==='function') hc.textContent=(+getBudget()).toFixed(2);
   }catch(e){}
@@ -2370,7 +2373,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261117n33';
+  var BUILD='20261117n34';
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
 
