@@ -1000,12 +1000,50 @@ function calcTodayPnL(){ var tk=todayKey(), pnl=0;
 /* 长期盈亏口径（2026-11-17 定稿）：历史一律清零，只从 2026-11-16（昨天）开市前资产起算。
    基准写成固定常量，不由各设备 localStorage 的 myPrincipal 推导，否则换设备/旧本金会把历史累计带出来。 */
 var LT_BASE_DATE='2026-11-16', LT_BASE_ASSET=10000.00;
-function calcFund(){ var mv=0; getHoldings().forEach(function(h){ mv+=(_lastPrice[h.code]||0)*h.qty; }); var cash=getBudget(), principal=getPrincipal(), total=cash+mv;
+/* ===== 流水重放：资金与持仓只从成交流水推导，绝不读本机 myBudget =====
+   治三类脏数据：①旧设备残留可用资金（曾 10187 / 10080 凭空多出）②同一笔重复卖出（回款进两次）
+   ③账本被旧设备回滚后重复记账。卖出超过在手股数的部分直接判脏单跳过。 */
+function _tKey(t){ if(t && t.ts) return +t.ts;
+  var s=String((t&&t.time)||'').replace(/[^\d]+/g,' ').trim().split(/\s+/); if(s.length<3) return 0;
+  return new Date(+s[0],(+s[1]||1)-1,(+s[2]||1),(+s[3]||0),(+s[4]||0),(+s[5]||0)).getTime()||0; }
+function isBuyT(t){ return !!(t && (t.type==='buy' || (t.type===undefined && (t.auto||t.buy) && !t.reason && !t.sellReason))); }
+function isSellT(t){ return !!(t && (t.type==='sell' || (t.type===undefined && t.auto && !!(t.reason||t.sellReason)))); }
+function replayLedger(){
+  var tr=getTrades().slice().sort(function(a,b){ return _tKey(a)-_tKey(b); });
+  var cash=LT_BASE_ASSET, pos={}, dup=0, i;
+  for(i=0;i<tr.length;i++){
+    var t=tr[i]; if(!t||!t.code) continue;
+    var q=+t.qty||0, p=+t.price||0, amt=(+t.amount>0?+t.amount:p*q), fee=(+t.fee>0?+t.fee:0);
+    if(isBuyT(t)){
+      cash-=(amt+fee);
+      var o=pos[t.code]||(pos[t.code]={code:t.code,name:t.name||t.code,qty:0,amt:0,fee:0});
+      o.qty+=q; o.amt+=amt; o.fee+=fee; if(t.name) o.name=t.name;
+    } else if(isSellT(t)){
+      var h=pos[t.code];
+      if(!h||h.qty<=0){ dup++; continue; }
+      var qq=(q<h.qty?q:h.qty); if(q>h.qty) dup++;
+      var ratio=(q>0?qq/q:0);
+      var avgAmt=h.amt/h.qty, avgFee=h.fee/h.qty;
+      cash+=amt*ratio-fee*ratio;
+      h.amt-=avgAmt*qq; h.fee-=avgFee*qq; h.qty-=qq;
+      if(h.qty<=0){ h.qty=0; h.amt=0; h.fee=0; }
+    }
+  }
+  var mv=0, held=[];
+  for(var k in pos){ var o2=pos[k]; if(!o2||o2.qty<=0) continue;
+    mv+=(_lastPrice[k]||0)*o2.qty;
+    held.push({code:o2.code,name:o2.name,qty:o2.qty,cost:Math.round(o2.amt*100)/100,fee:Math.round(o2.fee*100)/100}); }
+  return { cash:Math.round(cash*100)/100, mv:Math.round(mv*100)/100, dup:dup, holdings:held };
+}
+function calcFund(){ var principal=getPrincipal();
   if(!(principal>=LT_BASE_ASSET*0.5 && principal<=LT_BASE_ASSET*1.2)){
     try{ localStorage.setItem('myPrincipal',String(LT_BASE_ASSET)); localStorage.setItem('myPrincipalSet','1'); }catch(e){}
     principal=LT_BASE_ASSET;
   }
-  return { cash:cash, principal:principal, mv:mv, total:total, totalPnl:total-LT_BASE_ASSET, todayPnl:calcTodayPnL() }; }
+  var lg=replayLedger();
+  var cash=lg.cash, mv=lg.mv, total=cash+mv;
+  try{ if(Math.abs((parseFloat(localStorage.getItem('myBudget'))||0)-cash)>1){ localStorage.setItem('myBudget',String(cash)); } }catch(e){}
+  return { cash:cash, principal:principal, mv:mv, total:total, totalPnl:total-LT_BASE_ASSET, dupBad:lg.dup, todayPnl:calcTodayPnL() }; }
 function pnlClass(v,kind){ if(v>0) return kind==='today'?'fp-gold':'fp-blackgold'; if(v<0) return 'fp-darkgreen'; return ''; }
 function pnlTxt(v){ return (v>0?'+':'')+v.toFixed(2)+'元'; }
 // ===== 顶部"更新于/可用资金"动态化（原先写死 2026-11-06 07:40 / ¥1000.00，与实际资金面板矛盾）=====
@@ -1537,16 +1575,18 @@ function saveHS(o){ localStorage.setItem('myHS', JSON.stringify(o)); }
 function loadAlerts(){ try{ return JSON.parse(localStorage.getItem('myAlerts')||'{}'); }catch(e){ return {}; } }
 function saveAlerts(o){ localStorage.setItem('myAlerts', JSON.stringify(o)); }
 function getHoldings(){
-  var trades=getTrades(), h={};
-  trades.forEach(function(t){
-    if(!h[t.code]) h[t.code]={code:t.code,name:t.name,qty:0,cost:0,fee:0};
-    var _q=(isFinite(+t.qty)&&+t.qty>0)?+t.qty:0, _f=(isFinite(+t.fee)?+t.fee:0);
-    if(t.type==='buy'){ h[t.code].qty+=_q; if(isFinite(+t.amount)&&+t.amount>0){ h[t.code].cost+=+t.amount; } else { h[t.code].costBad=true; } h[t.code].fee+=_f; }
-    else if(t.type==='sell'){ if(h[t.code].qty>0&&!h[t.code].costBad){ var _avg=h[t.code].cost/h[t.code].qty; h[t.code].cost-=_avg*_q; } h[t.code].qty-=_q; h[t.code].fee+=_f; }
-  });
-  var out=[];
-  for(var k in h){ if(h[k]&&h[k].qty>0) out.push(h[k]); }
-  return out;
+  /* 持仓一律由流水重放得出：卖出超过在手股数的重复记账会被跳过，
+     老账本里没有 type 字段的买入（只有 auto:true）也不会再被当成卖出扣成负持仓。 */
+  try{ return replayLedger().holdings.slice(); }catch(e){
+    var trades=getTrades(), h={};
+    trades.forEach(function(t){
+      if(!t||!t.code) return; if(!h[t.code]) h[t.code]={code:t.code,name:t.name,qty:0,cost:0,fee:0};
+      var _q=(isFinite(+t.qty)&&+t.qty>0)?+t.qty:0;
+      if(isBuyT(t)){ h[t.code].qty+=_q; h[t.code].cost+=(+t.amount>0?+t.amount:+t.price*_q); }
+      else if(isSellT(t)){ if(h[t.code].qty>=_q){ var _avg=h[t.code].cost/h[t.code].qty; h[t.code].cost-=_avg*_q; h[t.code].qty-=_q; } }
+    });
+    var out=[]; for(var k in h){ if(h[k]&&h[k].qty>0) out.push(h[k]); } return out;
+  }
 }
 function editLine(code,kind){
   var hs=getHoldings(), one=null;
@@ -2387,7 +2427,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261117n43';
+  var BUILD='20261117n44';
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
 
@@ -2446,7 +2486,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-17 10:58"></script>
+<script src="./update-check.js" data-page-upd="2026-11-17 11:05"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -3187,7 +3227,7 @@ setInterval(_stCheck, 1000);
             if(ts>h[t.code].buyTs) h[t.code].buyTs=ts;
           }
         }
-      } else { h[t.code].qty-=q; }
+      } else { if(h[t.code].qty>=q) h[t.code].qty-=q; } /* 卖出超过在手股数=重复记账脏单，不扣成负持仓 */
     });
     var out=[]; for(var k in h){ if(h[k]&&h[k].qty>0) out.push(h[k]); }
     return out;
@@ -4213,15 +4253,9 @@ setInterval(_stCheck, 1000);
      否则重复卖出/旧快照会把总资产凭空虚增 */
   function syncCash(){
     try{
-      var tr=trades(); if(!tr.length) return;
-      var p0=10000; /* 本金固定 1 万：可用资金只按流水推导，不读本机可能残留的旧本金 */
-      var buy=0, sell=0, i, t;
-      for(i=0;i<tr.length;i++){
-        t=tr[i]; if(!t||!t.code) continue;
-        var q=n2(t.qty), p=n2(t.price), amt=n2(t.amount)||q*p;
-        if(t.type==='sell'||(t.type===undefined&&t.auto&&t.reason)) sell+=amt; else buy+=amt;
-      }
-      var cash=Math.round((p0+sell-buy)*100)/100;
+      /* 与主力面板同口径：按流水重放算可用资金，重复卖出/回滚脏单不算钱 */
+      var cash=(typeof replayLedger==='function')?replayLedger().cash:null;
+      if(cash===null) return;
       var cur=n2(localStorage.getItem('myBudget'));
       if(Math.abs(cash-cur)>1){
         localStorage.setItem('myBudget', String(cash));
