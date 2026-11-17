@@ -1,214 +1,60 @@
 {
- "updated": "2026-11-17 13:30",
- "days": [
+ "rows": [
   {
-   "date": "2026-11-11",
-   "stocks": [
-    {
-     "code": "600609",
-     "name": "金杯汽车",
-     "entry": 4.07,
-     "shares": 200,
-     "stop": 3.79,
-     "tp": 4.39,
-     "qty": "2手（200股）",
-     "close": 3.99,
-     "prev_close": null
-    },
-    {
-     "code": "000782",
-     "name": "恒申新材",
-     "entry": 8.39,
-     "shares": 100,
-     "stop": 8.07,
-     "tp": 9.35,
-     "qty": "1手（100股）",
-     "close": 8.5,
-     "prev_close": null
-    },
-    {
-     "code": "002892",
-     "name": "科力尔",
-     "entry": 9.71,
-     "shares": 100,
-     "stop": 9.13,
-     "tp": 10.57,
-     "qty": "1手（100股）",
-     "close": 9.61,
-     "prev_close": null
-    }
-   ]
+   "date": "2026-11-18",
+   "code": "sz002441",
+   "name": "众业达",
+   "entry": 8.31,
+   "close": null,
+   "day1_close": null,
+   "chg": 1.71,
+   "score": 10,
+   "src": "15:39收盘选股"
   },
   {
-   "date": "2026-11-12",
-   "stocks": [
-    {
-     "code": "sh603066",
-     "name": "音飞储存",
-     "entry": 9.47,
-     "shares": 300,
-     "stop": 9.0,
-     "tp": 10.42,
-     "qty": "3手（300股）",
-     "close": 9.39,
-     "prev_close": null,
-     "chg": -0.84
-    },
-    {
-     "code": "sz002324",
-     "name": "普利特",
-     "entry": 9.27,
-     "shares": 300,
-     "stop": 8.81,
-     "tp": 10.2,
-     "qty": "3手（300股）",
-     "close": 9.37,
-     "prev_close": null,
-     "chg": 1.08
-    },
-    {
-     "code": "sz002825",
-     "name": "纳尔股份",
-     "entry": 9.16,
-     "shares": 400,
-     "stop": 8.7,
-     "tp": 10.08,
-     "qty": "4手（400股）",
-     "close": 9.24,
-     "prev_close": null,
-     "chg": 0.87
-    }
-   ]
+   "date": "2026-11-18",
+   "code": "sh600894",
+   "name": "广日股份",
+   "entry": 7.81,
+   "close": null,
+   "day1_close": null,
+   "chg": 1.43,
+   "score": 10,
+   "src": "15:39收盘选股"
   },
   {
-   "date": "2026-11-16",
-   "stocks": [
-    {
-     "code": "sz000600",
-     "name": "建投能源",
-     "entry": 6.3,
-     "shares": 100,
-     "stop": 5.98,
-     "tp": 6.8,
-     "qty": "1手（100股）",
-     "close": 6.38,
-     "prev_close": null,
-     "chg": 1.27
-    },
-    {
-     "code": "sh603088",
-     "name": "宁波精达",
-     "entry": 9.52,
-     "shares": 100,
-     "stop": 9.04,
-     "tp": 10.28,
-     "qty": "1手（100股）",
-     "close": 9.28,
-     "prev_close": null,
-     "chg": -2.52
-    },
-    {
-     "code": "sz000417",
-     "name": "合百集团",
-     "entry": 6.21,
-     "shares": 100,
-     "stop": 5.9,
-     "tp": 6.71,
-     "qty": "1手（100股）",
-     "close": 6.39,
-     "prev_close": null,
-     "chg": 2.9
-    },
-    {
-     "code": "sz002090",
-     "name": "金智科技",
-     "entry": 8.59,
-     "shares": 100,
-     "stop": 8.16,
-     "tp": 9.28,
-     "qty": "1手（100股）",
-     "close": 8.43,
-     "prev_close": null,
-     "chg": -1.86
-    },
-    {
-     "code": "sz002093",
-     "name": "国脉科技",
-     "entry": 7.34,
-     "shares": 100,
-     "stop": 6.97,
-     "tp": 7.93,
-     "qty": "1手（100股）",
-     "close": 7.27,
-     "prev_close": null,
-     "chg": -0.95
-    }
-   ]
+   "date": "2026-11-18",
+   "code": "sh600300",
+   "name": "维维股份",
+   "entry": 3.14,
+   "close": null,
+   "day1_close": null,
+   "chg": 1.95,
+   "score": 10,
+   "src": "15:39收盘选股"
   },
   {
-   "date": "2026-11-17",
-   "stocks": [
-    {
-     "code": "sh600035",
-     "name": "楚天高速",
-     "entry": 3.85,
-     "shares": 500,
-     "stop": 3.66,
-     "tp": 4.24,
-     "qty": "5手（500股）",
-     "close": 3.86,
-     "prev_close": null,
-     "chg": 0.26
-    },
-    {
-     "code": "sz002445",
-     "name": "中南文化",
-     "entry": 3.32,
-     "shares": 600,
-     "stop": 3.15,
-     "tp": 3.65,
-     "qty": "6手（600股）",
-     "close": 3.25,
-     "prev_close": null,
-     "chg": -2.11
-    },
-    {
-     "code": "sz002588",
-     "name": "史丹利",
-     "entry": 7.41,
-     "shares": 200,
-     "stop": 7.04,
-     "tp": 8.15,
-     "qty": "2手（200股）",
-     "close": 7.45,
-     "prev_close": null,
-     "chg": 0.54
-    },
-    {
-     "code": "sh603708",
-     "name": "家家悦",
-     "entry": 9.73,
-     "shares": 200,
-     "stop": 9.24,
-     "tp": 10.7,
-     "qty": "2手（200股）",
-     "close": 9.79,
-     "prev_close": null,
-     "chg": 0.62
-    },
-    {
-     "code": "sz000100",
-     "name": "TCL科技",
-     "entry": 4.61,
-     "shares": 400,
-     "stop": 4.38,
-     "tp": 5.07,
-     "qty": "4手（400股）",
-     "close": 4.74,
-     "prev_close": null,
-     "chg": 3.27
-    }
-   ]
+   "date": "2026-11-18",
+   "code": "sz000543",
+   "name": "皖能电力",
+   "entry": 7.7,
+   "close": null,
+   "day1_close": null,
+   "chg": 1.85,
+   "score": 9,
+   "src": "15:39收盘选股"
+  },
+  {
+   "date": "2026-11-18",
+   "code": "sh603966",
+   "name": "法兰泰克",
+   "entry": 7.41,
+   "close": null,
+   "day1_close": null,
+   "chg": 1.51,
+   "score": 9,
+   "src": "15:39收盘选股"
   }
- ]
+ ],
+ "updated": "2026-11-17 15:40"
 }
