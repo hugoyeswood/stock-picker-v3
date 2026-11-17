@@ -2427,7 +2427,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261117n47';
+  var BUILD='20261117n48';
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
 
@@ -2486,7 +2486,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-17 13:30"></script>
+<script src="./update-check.js" data-page-upd="2026-11-17 14:05"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -3620,14 +3620,35 @@ setInterval(_stCheck, 1000);
     if(s.length>3800){ trim('myTrades',20); trim('myAutoLog',5); trim('myAlerts',10); s=JSON.stringify(p); }
     return s;
   }
+  // 推送闸门（2026-11-17）：本地账本比云端少 = 本机是落后/空的旧设备。
+  // 绝不能让它把云端权威账本覆盖掉（今天已因「空账本客户端」把 11 笔覆盖成 1 笔）。
+  // 规则：先拉云端最新，条数少于云端就放弃本次推送，改为接受云端数据。
   function push(){
     if(applying) return;
     try{ if(localStorage.getItem('__noSync')==='1') return; }catch(e){}
     try{
       var body=build(); if(!body){ return; } busy=true;
-      fetch(TOPIC,{method:'POST',headers:{'Title':'acc','Priority':'1','Tags':'floppy_disk'},body:body})
-        .then(function(r){ busy=false; if(r&&r.ok){ lastAt=JSON.parse(body).at; setBar('已同步 '+hhmm(),true); } else { setBar('同步被拒',false); } })
-        .catch(function(){ busy=false; setBar('同步失败',false); });
+      var me=JSON.parse(body);
+      var mine=(me.d&&me.d.myTrades)?JSON.parse(me.d.myTrades||'[]').length:0;
+      fetch(TOPIC+'/json?poll=1&since=2h')
+        .then(function(r){ return r.text(); })
+        .catch(function(){ return ''; })
+        .then(function(txt){
+          var last=null;
+          String(txt||'').split('\n').forEach(function(line){
+            if(!line.trim()) return;
+            try{ var o=JSON.parse(line); if(o&&o.event==='message'&&o.message){ var p=JSON.parse(o.message); if(p&&p.at&&(!last||p.at>last.at)) last=p; } }catch(e){}
+          });
+          var their=(last&&last.d&&last.d.myTrades)?JSON.parse(last.d.myTrades||'[]').length:0;
+          if(their>mine){                       // 本机落后 → 不推，改用云端
+            try{ apply(last); }catch(e){}
+            setBar('本机账本落后，已采用云端 '+mine+'→'+their+' 笔',false);
+            busy=false; return;
+          }
+          return fetch(TOPIC,{method:'POST',headers:{'Title':'acc','Priority':'1','Tags':'floppy_disk'},body:body})
+            .then(function(r){ busy=false; if(r&&r.ok){ lastAt=me.at; setBar('已同步 '+hhmm(),true); } else { setBar('同步被拒',false); } })
+            .catch(function(){ busy=false; setBar('同步失败',false); });
+        });
     }catch(e){ busy=false; }
   }
   function mark(){ if(applying) return; if(timer) clearTimeout(timer); timer=setTimeout(push,2500); }
