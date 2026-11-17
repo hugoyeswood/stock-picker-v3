@@ -1,5 +1,5 @@
 /* 离线缓存：HTML/JSON 永不落缓存，静态资源 network-first 兜底 */
-var VER = '20261117n53';
+var VER = '20261118n54';
 var CACHE = 'stock-picker-v3-' + VER;
 var STATIC = [
   './manifest.json',
