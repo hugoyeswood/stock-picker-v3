@@ -969,11 +969,13 @@ function uiPrompt(title,def,cb){ var old=document.getElementById('uiMask'); if(o
 function getBudget(){ try{ return parseFloat(localStorage.getItem('myBudget'))||1000; }catch(e){ return 1000; } }
 function setBudget(v){ localStorage.setItem('myBudget', v); refreshFundPanel(); }
 function getPrincipal(){
+  /* 本金固定 1 万（用户定稿）。旧的「按买入合计反推本金」逻辑已废弃：
+     买入合计会随新仓不断增加，会把本金越推越大（曾推到 10776/22734），长期盈亏随之失真。 */
   var v=0; try{ v=parseFloat(localStorage.getItem('myPrincipal'))||0; }catch(e){}
-  var buys=0; try{ getTrades().forEach(function(t){ if(t.type==='buy') buys+=(+t.amount||(t.price*t.qty))+(+t.fee||0); }); }catch(e){}
-  var uset=false; try{ uset=localStorage.getItem('myPrincipalSet')==='1'; }catch(e){}
-  if(!uset && buys>0 && (!v || v<buys*0.5)){ v=Math.round(buys*100)/100; try{ localStorage.setItem('myPrincipal',String(v)); }catch(e){} }
-  return v||1000; }
+  if(!(v>=10000*0.5 && v<=10000*1.2)){
+    v=10000; try{ localStorage.setItem('myPrincipal','10000'); localStorage.setItem('myPrincipalSet','1'); }catch(e){}
+  }
+  return v; }
 function setPrincipal(v){ localStorage.setItem('myPrincipal', v); try{ localStorage.setItem('myPrincipalSet','1'); }catch(e){} refreshFundPanel(); }
 function bindPrincipalUI(){
   var inp=document.getElementById('priInput'), btn=document.getElementById('priBtn'); if(!inp||!btn) return;
@@ -995,7 +997,15 @@ function calcTodayPnL(){ var tk=todayKey(), pnl=0;
   getTrades().forEach(function(t){ if((t.time||'').indexOf(tk)!==0) return; var pc=_lastPrev[t.code]; if(t.type==='sell'&&pc) pnl+=(t.price-pc)*t.qty; });
   getHoldings().forEach(function(h){ var p=_lastPrice[h.code], pc=_lastPrev[h.code]; if(p&&pc) pnl+=(p-pc)*h.qty; });
   return pnl; }
-function calcFund(){ var mv=0; getHoldings().forEach(function(h){ mv+=(_lastPrice[h.code]||0)*h.qty; }); var cash=getBudget(), principal=getPrincipal(), total=cash+mv; return { cash:cash, principal:principal, mv:mv, total:total, totalPnl:total-principal, todayPnl:calcTodayPnL() }; }
+/* 长期盈亏口径（2026-11-17 定稿）：历史一律清零，只从 2026-11-16（昨天）开市前资产起算。
+   基准写成固定常量，不由各设备 localStorage 的 myPrincipal 推导，否则换设备/旧本金会把历史累计带出来。 */
+var LT_BASE_DATE='2026-11-16', LT_BASE_ASSET=10000.00;
+function calcFund(){ var mv=0; getHoldings().forEach(function(h){ mv+=(_lastPrice[h.code]||0)*h.qty; }); var cash=getBudget(), principal=getPrincipal(), total=cash+mv;
+  if(!(principal>=LT_BASE_ASSET*0.5 && principal<=LT_BASE_ASSET*1.2)){
+    try{ localStorage.setItem('myPrincipal',String(LT_BASE_ASSET)); localStorage.setItem('myPrincipalSet','1'); }catch(e){}
+    principal=LT_BASE_ASSET;
+  }
+  return { cash:cash, principal:principal, mv:mv, total:total, totalPnl:total-LT_BASE_ASSET, todayPnl:calcTodayPnL() }; }
 function pnlClass(v,kind){ if(v>0) return kind==='today'?'fp-gold':'fp-blackgold'; if(v<0) return 'fp-darkgreen'; return ''; }
 function pnlTxt(v){ return (v>0?'+':'')+v.toFixed(2)+'元'; }
 // ===== 顶部"更新于/可用资金"动态化（原先写死 2026-11-06 07:40 / ¥1000.00，与实际资金面板矛盾）=====
@@ -1015,7 +1025,7 @@ function refreshFundPanel(){ refreshHeadMeta(); var el=document.getElementById('
   h+='<div class="fp-row"><span class="fp-lab">可用资金</span><span class="fp-val" onclick="editBudget()" title="点击编辑可用资金">¥'+f.cash.toFixed(2)+'</span></div>';
   h+='<div class="fp-row"><span class="fp-lab">持仓市值</span><span class="fp-val">¥'+f.mv.toFixed(2)+'</span></div>';
   h+='<div class="fp-row"><span class="fp-lab">今日盈亏</span><span class="fp-val '+pnlClass(f.todayPnl,'today')+'">'+pnlTxt(f.todayPnl)+'</span></div>';
-  h+='<div class="fp-row"><span class="fp-lab">长期盈亏（累计）</span><span class="fp-val '+pnlClass(f.totalPnl,'total')+'">'+pnlTxt(f.totalPnl)+'</span></div>';
+  h+='<div class="fp-row"><span class="fp-lab" title="历史数据已清零，基准 = 2026-11-16 开市前总资产 ¥'+LT_BASE_ASSET.toFixed(2)+'">长期盈亏（自 2026-11-16 起）</span><span class="fp-val '+pnlClass(f.totalPnl,'total')+'">'+pnlTxt(f.totalPnl)+'</span></div>';
   el.innerHTML=h; }
 
 // ===== 持仓上报（把「我的持仓」真实数据送到服务端，供收盘自检/周目标用真实口径）=====
@@ -1090,7 +1100,8 @@ function applyCloudData(p){
   if(!p||!Array.isArray(p.trades)) throw new Error('备份内容无效');
   saveTrades(p.trades);
   if(typeof p.budget==='number' && p.budget>0) setBudget(p.budget);
-  if(typeof p.principal==='number' && p.principal>0) setPrincipal(p.principal);
+  /* 本金固定 1 万：旧备份/旧快照里的 22734.45 之类历史本金一律不接 */
+  if(typeof p.principal==='number' && p.principal>0 && Math.abs(p.principal-10000)<2000) setPrincipal(p.principal);
   if(p.hs && typeof p.hs==='object') saveHS(p.hs);
   if(p.alerts && typeof p.alerts==='object') saveAlerts(p.alerts);
   try{ refreshHoldings(); refreshFundPanel(); }catch(e){}
@@ -1151,7 +1162,8 @@ function importBackup(){
   if(!p || !Array.isArray(p.trades)){ uiAlert('❌ 备份缺少交易记录，恢复失败'); return; }
   saveTrades(p.trades);
   if(typeof p.budget==='number' && p.budget>0) setBudget(p.budget);
-  if(typeof p.principal==='number' && p.principal>0) setPrincipal(p.principal);
+  /* 本金固定 1 万：旧备份/旧快照里的 22734.45 之类历史本金一律不接 */
+  if(typeof p.principal==='number' && p.principal>0 && Math.abs(p.principal-10000)<2000) setPrincipal(p.principal);
   if(p.hs && typeof p.hs==='object') saveHS(p.hs);
   if(p.alerts && typeof p.alerts==='object') saveAlerts(p.alerts);
 
@@ -2375,7 +2387,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261117n42';
+  var BUILD='20261117n43';
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
 
@@ -2434,7 +2446,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-17 10:50"></script>
+<script src="./update-check.js" data-page-upd="2026-11-17 10:58"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -2735,7 +2747,8 @@ function sellAll(code,name,price){
       if(typeof applyCloudData==='function'){ applyCloudData(p); }
       else { localStorage.setItem('myTrades', JSON.stringify(p.trades)); try{ localStorage.setItem('myTrades_bak', JSON.stringify(p.trades)); }catch(e){}
              if(p.budget>0) localStorage.setItem('myBudget', String(p.budget));
-             if(p.principal>0) localStorage.setItem('myPrincipal', String(p.principal)); }
+             /* 本金固定 1 万，不再从云端快照接受旧本金（曾把 22734.45 写回本机） */
+             if(p.principal>0 && Math.abs(+p.principal-10000)<2000) localStorage.setItem('myPrincipal', String(p.principal)); }
     }catch(e){ return false; }
     localStorage.setItem('spCloudAt', String(p.at||now()));
     try{ refreshHoldings(); refreshFundPanel(); if(window.__refreshWeekly) window.__refreshWeekly(); }catch(e){}
@@ -4201,7 +4214,7 @@ setInterval(_stCheck, 1000);
   function syncCash(){
     try{
       var tr=trades(); if(!tr.length) return;
-      var p0=n2(localStorage.getItem('myPrincipal'))||10000;
+      var p0=10000; /* 本金固定 1 万：可用资金只按流水推导，不读本机可能残留的旧本金 */
       var buy=0, sell=0, i, t;
       for(i=0;i<tr.length;i++){
         t=tr[i]; if(!t||!t.code) continue;
