@@ -2375,7 +2375,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261117n37';
+  var BUILD='20261117n38';
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
 
@@ -2434,7 +2434,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-17 10:08"></script>
+<script src="./update-check.js" data-page-upd="2026-11-17 10:12"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -4128,7 +4128,37 @@ setInterval(_stCheck, 1000);
     var u=$('planUpd'); if(u) u.textContent=new Date().toTimeString().slice(0,5)+' 更新';
   }
 
-  function all(){ try{ renderPlan(); renderTrades(); }catch(e){} }
+  /* 日志回填：本地 myAutoLog 为空时，用真实交易反推日志，避免云端日志被空值反复覆盖 */
+  function backfillLog(){
+    try{
+      var cur=[]; try{ cur=JSON.parse(localStorage.getItem('myAutoLog')||'[]'); }catch(e){ cur=[]; }
+      if(!Array.isArray(cur)) cur=[];
+      if(cur.length) return;
+      var tr=trades(); if(!tr.length) return;
+      var arr=[],i,x;
+      for(i=0;i<tr.length;i++){
+        x=tr[i]; if(!x||!x.code) continue;
+        var isSell=(x.type==='sell')||(x.type===undefined&&x.auto&&x.reason);
+        var isBuy=(x.type==='buy')||(x.type===undefined&&x.auto&&!x.reason);
+        if(!isBuy&&!isSell) continue;
+        arr.push({o:x,sell:isSell,at:tms(x.time)});
+      }
+      if(!arr.length) return;
+      arr.sort(function(a,b){ return a.at-b.at; });
+      var lines=[];
+      for(i=0;i<arr.length;i++){
+        x=arr[i].o; var q=n2(x.qty), p=n2(x.price), amt=n2(x.amount)||p*q;
+        var t=new Date(arr[i].at||Date.now());
+        var hm=('0'+t.getHours()).slice(-2)+':'+('0'+t.getMinutes()).slice(-2);
+        var why=x.reason||x.sellReason||(arr[i].sell?'卖出':'买区成交');
+        lines.push('['+hm+'] 🤖 '+(arr[i].sell?'自动卖出':'自动买入')+' · '+x.name+' '+q+'股 @¥'+f2(p)
+          +'（'+why+'）回款¥'+f2(amt));
+      }
+      localStorage.setItem('myAutoLog', JSON.stringify(lines.slice(-30)));
+    }catch(e){}
+  }
+
+  function all(){ try{ backfillLog(); renderPlan(); renderTrades(); }catch(e){} }
   window.__planBoard={render:all, plan:renderPlan, log:renderTrades};
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){ setTimeout(all,1200); }); else setTimeout(all,1200);
   setInterval(function(){ if(!document.hidden) all(); },5000);
