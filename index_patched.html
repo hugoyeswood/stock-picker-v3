@@ -2040,6 +2040,8 @@ function volPanelHtml(code, t){
     else { judge='持有观望'; jcol='#546e7a'; why='量能无增长但价格未破位，守止损线'+sl.toFixed(2)+'，不追加'; }
   } else if(t.trend==='放大'){
     judge='持有/可加仓'; jcol='#2e7d32'; why='量能持续放大，趋势有承接，浮盈可金字塔加仓';
+    var _blk=(window.__isBL&&window.__isBL(code));
+    if(_blk){ judge='只许减、不许加（已拉黑）'; jcol='#c62828'; why='该票连亏熔断在黑名单内，量能再好也不作为加仓依据，只在止损线'+sl.toFixed(2)+'处离场'; }
   } else {
     judge='持有观望'; jcol='#546e7a'; why='量能持平，等放量选方向';
   }
@@ -2212,6 +2214,14 @@ function manualRefreshAll(){
 // 回到前台/重新联网时立即重拉，避免后台定时器被系统挂起后一直显示旧目录
 document.addEventListener('visibilitychange', function(){ if(!document.hidden){ try{ refreshShortTerm(); }catch(e){} } });
 window.addEventListener('online', function(){ try{ refreshShortTerm(); }catch(e){} });
+// ===== 黑名单（熔断票）：只有止损权，没有加仓权 =====
+window.__BL=window.__BL||[];
+window.__isBL=function(c){ try{ var a=window.__BL||[]; for(var i=0;i<a.length;i++){ if(String(a[i])===String(c)) return true; } }catch(e){} return false; };
+(function(){ try{
+  fetch('./blacklist.json?nc='+Date.now()).then(function(r){ return r.json(); }).then(function(j){
+    window.__BL=(j&&j.codes)||[]; try{ renderHoldAdvice(); }catch(e){}
+  }).catch(function(){});
+}catch(e){} })();
 // ===== 持仓着重关注：每小时抛售/加仓提示 =====
 // 信号矩阵（对每只持仓股，现价用每秒实时缓存 _lastPrice）：
 //   抛售SELL：现价≤止损线×1.02（逼近止损线）| 现价≥止盈目标（涨值巅峰落袋）| 当日涨幅≥9.5%（接近涨停锁利）
@@ -2242,6 +2252,12 @@ function holdAdviceFor(h){
   else if(p>sl*1.03&&pnlPct<=-1.8&&pnlPct>=-4.2&&chg>=-3&&chg<=0&&vr<1.5){ advice='ADD'; level=1; act='试探加仓'; rule='利弗莫尔·关键点企稳'; why='回调至成本下方'+(-pnlPct).toFixed(1)+'%、距止损线仍有'+((p/sl-1)*100).toFixed(1)+'%空间且缩量企稳（量比'+vr.toFixed(1)+'），关键点获支撑，先试探性加半份'; }
   else if(pnlPct<=-2&&pnlPct>=-5&&amp>0&&amp<5&&chg>=-2&&chg<=1){ advice='ADD'; level=1; act='试探加仓'; rule='海龟·缩量回调到位'; why='缩量回调到位（振幅'+amp.toFixed(1)+'%），趋势中回踩，先试探性加半份'; }
   else if(pnlPct>=2&&pnlPct<=8&&chg>=1&&chg<=5&&vr>=1.5&&vr<=3){ advice='ADD'; level=2; act='加仓'; rule='幽灵·盈利加码'; why='趋势确认盈利+'+pnlPct.toFixed(1)+'%、量价配合（量比'+vr.toFixed(1)+'），金字塔加仓'; }
+  /* 黑名单熔断票：任何"加仓"信号都作废（连续 2 日低于推荐价的票不许再加钱），
+     只保留止损离场一条出口——与 tools/blacklist.json 和用户"中南按规则止损"的定稿一致。*/
+  if(advice==='ADD' && window.__isBL && window.__isBL(h.code)){
+    advice='SELL'; level=3; act='清仓'; rule='黑名单·连亏熔断';
+    why='该票已拉黑（连续 2 日收盘低于推荐价），规则禁止加仓，按纪律在止损线¥'+sl.toFixed(2)+'处离场，不加一分钱';
+  }
   return advice?{code:h.code,name:h.name,price:p,cost:cost,sl:sl,tp:tp,pnlPct:pnlPct,chg:chg,vr:vr,tr:tr,amp:amp,high:high,low:low,advice:advice,rule:rule,why:why,act:act,level:level}:null;
 }
 function renderHoldAdvice(){
@@ -2448,7 +2464,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261118n54';
+  var BUILD='20261118n55';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2508,7 +2524,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-18 06:00"></script>
+<script src="./update-check.js" data-page-upd="2026-11-18 06:10"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
