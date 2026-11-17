@@ -1084,6 +1084,16 @@ function calcFee(amount,type){ var c=Math.max(amount*0.00025,5); var t=amount*0.
 
 // ===== 交易记录（存本地，双键冗余防丢失） =====
 function getTrades(){ try{ var v=JSON.parse(localStorage.getItem('myTrades')||''); if(Array.isArray(v)) return v; }catch(e){} try{ var b=JSON.parse(localStorage.getItem('myTrades_bak')||''); if(Array.isArray(b)) return b; }catch(e){} return []; }
+/* 名称兜底：账本/日志里 name 缺失或写成 undefined 时，用代码或推荐名单名代替，
+   禁止把「undefined 1800股」这类脏文案推给用户 */
+var _NM_CACHE={};
+function rememberNames(list){ try{ (list||[]).forEach(function(s){ if(s&&s.code&&s.name&&String(s.name)!=='undefined') _NM_CACHE[s.code]=s.name; }); }catch(e){} }
+function dispName(name,code){
+  if(name!==undefined&&name!==null&&String(name).trim()!==''&&String(name)!=='undefined') return String(name);
+  if(code&&_NM_CACHE[code]) return _NM_CACHE[code];
+  return code?('标的'+String(code).slice(-6)):'未知标的';
+}
+window.__dispName=dispName; window.__rememberNames=rememberNames;
 function saveTrades(t){ var s=JSON.stringify(t); localStorage.setItem('myTrades', s); try{ localStorage.setItem('myTrades_bak', s); }catch(e){} try{ cloudAuto(); }catch(e){} }
 // ===== 数据备份/恢复（防浏览器清空丢失持仓） =====
 function exportBackup(){
@@ -2122,6 +2132,7 @@ function refreshShortTerm(){
     if(j.date && j.date!==todayStr && !(j.date>todayStr)) return; // 允许当天或未来(下周一预备)名单渲染
     // 目录内容没变就只重算线路，不重建卡片（否则频繁刷新会打断看 K 线/操作）
     var sig=(j.date||'')+'#'+(j.ts||'')+'#'+(j.stocks||[]).map(function(x){return x.code;}).join(',');
+    try{ rememberNames(j.stocks); }catch(e){}
     if(sig===_lastStSig && el.querySelectorAll('.st-item').length){ recalcRecLines(); updateStWarn(); return; }
     _lastStSig=sig;
     el.innerHTML=renderShortTerm(j);
@@ -2427,7 +2438,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261117n51';
+  var BUILD='20261117n52';
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
 
@@ -2486,7 +2497,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-17 14:55"></script>
+<script src="./update-check.js" data-page-upd="2026-11-17 15:35"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -3164,8 +3175,14 @@ setInterval(_stCheck, 1000);
     box._t=setTimeout(function(){ box.style.display='none'; }, 4200);
   }
 
+  var _ntSeen={};
   function notify(text,color){
     var t=new Date();
+    /* 同一条文案 25 秒内只提醒一次：避免刷屏式重复提示 */
+    var _nkey=String(text).replace(/[0-9]+\.[0-9]+/g,'#');
+    var _now=t.getTime(), _prev=_ntSeen[_nkey];
+    if(_prev&&_now-_prev<25000) return;
+    _ntSeen[_nkey]=_now;
     var line='['+pad(t.getHours())+':'+pad(t.getMinutes())+'] '+text;
     var l=readLog(); l.push(line); writeLog(l);
     renderLog();
@@ -3270,6 +3287,31 @@ setInterval(_stCheck, 1000);
 
   function autoSell(code,name,price,qty,reason,h){
     if(!qty||qty<=0) return false;
+    name=dispName(name,code);
+    /* 闸门①：卖出股数以本机流水重放的在手股数为上限，杜绝 1800 股这类翻倍幽灵单 */
+    var _hs=getHoldings(), _held=0;
+    _hs.forEach(function(x){ if(x&&x.code===code) _held=+x.qty||0; });
+    if(_held<=0){
+      notify('🤖 卖出拦截 '+name+'：本机账户已无该持仓，本轮不发单','#c62828');
+      return false;
+    }
+    if(qty>_held) qty=_held;
+    /* 闸门②：必须以云端账本为准。云端该股持仓为 0 或云端快照超过 10 分钟未同步 → 拒发 */
+    var _ch=window.__cloudHold, _cat=window.__cloudAt||0;
+    if(!_ch || (Date.now()-_cat)>10*60*1000 || !_ch[code] || +_ch[code]<=0){
+      notify('🤖 卖出拦截 '+name+'：云端账本未确认该持仓（本地多为旧账本），已暂停发单','#c62828');
+      return false;
+    }
+    if(qty>+_ch[code]) qty=+_ch[code];
+    /* 闸门③：当日该股已自动卖出过的股数累计 >= 持仓 → 幂等跳过，防每秒重发 */
+    try{
+      var _d0=dayStr(), _tlist=getTrades(), _sold=0;
+      for(var _j=0;_j<_tlist.length;_j++){
+        var _y=_tlist[_j];
+        if(_y && _y.auto && _y.type==='sell' && _y.code===code && (_y.day===_d0 || String(_y.time||'').indexOf(_d0.replace(/-/g,'/'))>-1)) _sold+=(+_y.qty||0);
+      }
+      if(_sold>=_held){ return false; }
+    }catch(e){}
     var amount=price*qty;
     var fee=0; try{ fee=calcFee(amount,'sell'); }catch(e){ fee=0; }
     var trades=getTrades();
@@ -3286,6 +3328,11 @@ setInterval(_stCheck, 1000);
   }
 
   function autoBuy(code,name,price,qty,entry,tp,sl){
+    name=dispName(name,code);
+    /* 云端账本未同步时不开新仓：本地账本可能是旧数据，买入会把资金口径带偏 */
+    if(!window.__cloudHold || (Date.now()-(window.__cloudAt||0))>10*60*1000){
+      notify('🤖 买入拦截 '+name+'：云端账本未同步，自动交易暂停','#c62828'); return false;
+    }
     /* 资金安全硬保险：同 code 当日已有一笔 auto 买入则拒绝，杜绝重复建仓 */
     var _d=dayStr(), _t0=getTrades(), _dup=0;
     for(var _i=0;_i<_t0.length;_i++){
@@ -3670,11 +3717,11 @@ setInterval(_stCheck, 1000);
   function apply(p){
     if(!p||!p.d||!p.at) return false;
     if(p.at>Date.now()+120000) return false;
-    var isMasterSnap=(p.lock==='1'&&p.owner&&p.owner!==DEV);
+    var isMasterSnap=(String(p.lock)==='1'&&p.owner&&p.owner!==DEV);
     if(isMasterSnap){ if(p.at<=appliedAt) return false; }
     else { if(p.at<=lastAt) return false; }
-    var isSlaveLock=(p.lock==='1'&&p.owner&&p.owner!==DEV);
-    if(p.lock==='1'&&p.owner&&p.owner!==DEV){
+    var isSlaveLock=(String(p.lock)==='1'&&p.owner&&p.owner!==DEV);
+    if(String(p.lock)==='1'&&p.owner&&p.owner!==DEV){
       try{ _si.call(localStorage,'__syncLock','1'); _si.call(localStorage,'__syncOwner',p.owner); }catch(e){}
     }
     applying=true;
@@ -3684,7 +3731,15 @@ setInterval(_stCheck, 1000);
         try{
           if(k==='myTrades'){
             if(isMasterSnap || isSlaveLock){ _si.call(localStorage,k, p.d[k]); }
-            else { _si.call(localStorage,k, unionArr(localStorage.getItem(k), p.d[k], tradeKey, 200)); }
+            else {
+              /* 云端条数明显多于本地 → 说明本机缺历史，直接采用云端，避免两套账本各说各话；
+                 反之（本地多于云端）只做增量并集，多余脏单由卖出闸门在成交前拦下 */
+              var _K=localStorage.getItem(k), _A=[], _B=[];
+              try{ _A=JSON.parse(_K||'[]'); }catch(e){ _A=[]; }
+              try{ _B=JSON.parse(p.d[k]||'[]'); }catch(e){ _B=[]; }
+              if(Array.isArray(_B)&&_B.length>((Array.isArray(_A)?_A.length:0))+2){ _si.call(localStorage,k, p.d[k]); }
+              else { _si.call(localStorage,k, unionArr(_K, p.d[k], tradeKey, 200)); }
+            }
           }
           else if(k==='myAutoLog'){ _si.call(localStorage,k, unionArr(localStorage.getItem(k), p.d[k], logKey, 30)); }
           else { _si.call(localStorage,k, p.d[k]); }
@@ -3709,12 +3764,30 @@ setInterval(_stCheck, 1000);
             var m=JSON.parse(o.message);
             if(m && m.d && m.at && m.at <= Date.now()+120000){
               if(!last || m.at>last.at) last=m;
-              if(m.lock==='1' && m.owner && (!master || m.at>master.at)) master=m;
+              if(String(m.lock)==='1' && m.owner && (!master || m.at>master.at)) master=m;
             }
           }
         }catch(e){}
       }
-      if(master){ cloudOwner=master.owner; apply(master); }
+      if(master){
+        cloudOwner=master.owner;
+        /* 云端（守卫维护）账本是唯一权威口径：解析出各股在手股数，供前端卖出/买入闸门校验，
+           本机旧账本（如 1800 股中南、早已清掉的国脉/宁波精达）不得据此发单 */
+        try{
+          var _tr=master.d && master.d.myTrades;
+          if(typeof _tr==='string'){ try{ _tr=JSON.parse(_tr); }catch(e){ _tr=null; } }
+          var _pos={}, _n=0;
+          (_tr||[]).forEach(function(t){
+            if(!t||!t.code) return; _n++;
+            var q=+t.qty||0; _pos[t.code]=_pos[t.code]||0;
+            var _sell=(t.type==='sell')||(t.type===undefined&&t.auto&&t.reason);
+            if(_sell) _pos[t.code]=Math.max(0,_pos[t.code]-q); else _pos[t.code]+=q;
+          });
+          window.__cloudHold=_pos; window.__cloudAt=master.at; window.__cloudCount=_n;
+          try{ window.__rememberNames(_tr); }catch(e){}
+        }catch(e){}
+        apply(master);
+      }
       else if(last){ apply(last); }
     }).catch(function(){});
   }
@@ -4253,7 +4326,7 @@ setInterval(_stCheck, 1000);
         var t=new Date(arr[i].at||Date.now());
         var hm=('0'+t.getHours()).slice(-2)+':'+('0'+t.getMinutes()).slice(-2);
         var why=x.reason||x.sellReason||(arr[i].sell?'卖出':'买区成交');
-        lines.push('['+hm+'] 🤖 '+(arr[i].sell?'自动卖出':'自动买入')+' · '+x.name+' '+q+'股 @¥'+f2(p)
+        lines.push('['+hm+'] 🤖 '+(arr[i].sell?'自动卖出':'自动买入')+' · '+dispName(x.name,x.code)+' '+q+'股 @¥'+f2(p)
           +'（'+why+'）回款¥'+f2(amt));
       }
       localStorage.setItem('myAutoLog', JSON.stringify(lines.slice(-30)));
