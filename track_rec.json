@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-16 15:49",
+ "updated": "2026-11-17 13:05",
  "days": [
   {
    "date": "2026-11-11",
@@ -156,9 +156,9 @@
      "stop": 3.66,
      "tp": 4.24,
      "qty": "5手（500股）",
-     "close": null,
+     "close": 3.85,
      "prev_close": null,
-     "chg": 1.58
+     "chg": 0.0
     },
     {
      "code": "sz002445",
@@ -168,21 +168,9 @@
      "stop": 3.15,
      "tp": 3.65,
      "qty": "6手（600股）",
-     "close": null,
+     "close": 3.24,
      "prev_close": null,
-     "chg": 1.53
-    },
-    {
-     "code": "sz002238",
-     "name": "天威视讯",
-     "entry": 7.17,
-     "shares": 200,
-     "stop": 6.81,
-     "tp": 7.89,
-     "qty": "2手（200股）",
-     "close": null,
-     "prev_close": null,
-     "chg": 1.41
+     "chg": -2.41
     },
     {
      "code": "sz002588",
@@ -192,9 +180,9 @@
      "stop": 7.04,
      "tp": 8.15,
      "qty": "2手（200股）",
-     "close": null,
+     "close": 7.4,
      "prev_close": null,
-     "chg": 1.79
+     "chg": -0.13
     },
     {
      "code": "sh603708",
@@ -204,9 +192,21 @@
      "stop": 9.24,
      "tp": 10.7,
      "qty": "2手（200股）",
-     "close": null,
+     "close": 9.83,
      "prev_close": null,
-     "chg": 1.67
+     "chg": 1.03
+    },
+    {
+     "code": "sz000100",
+     "name": "TCL科技",
+     "entry": 4.61,
+     "shares": 400,
+     "stop": 4.38,
+     "tp": 5.07,
+     "qty": "4手（400股）",
+     "close": 4.69,
+     "prev_close": null,
+     "chg": 2.18
     }
    ]
   }
