@@ -2375,7 +2375,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261117n39';
+  var BUILD='20261117n40';
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
 
@@ -2434,7 +2434,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-17 10:15"></script>
+<script src="./update-check.js" data-page-upd="2026-11-17 10:23"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -4168,7 +4168,28 @@ setInterval(_stCheck, 1000);
     }catch(e){}
   }
 
-  function all(){ try{ backfillLog(); renderPlan(); renderTrades(); }catch(e){} }
+  /* 资金口径：可用资金一律由成交流水推导，不接受任意客户端写漂的 myBudget，
+     否则重复卖出/旧快照会把总资产凭空虚增 */
+  function syncCash(){
+    try{
+      var tr=trades(); if(!tr.length) return;
+      var p0=n2(localStorage.getItem('myPrincipal'))||10000;
+      var buy=0, sell=0, i, t;
+      for(i=0;i<tr.length;i++){
+        t=tr[i]; if(!t||!t.code) continue;
+        var q=n2(t.qty), p=n2(t.price), amt=n2(t.amount)||q*p;
+        if(t.type==='sell'||(t.type===undefined&&t.auto&&t.reason)) sell+=amt; else buy+=amt;
+      }
+      var cash=Math.round((p0+sell-buy)*100)/100;
+      var cur=n2(localStorage.getItem('myBudget'));
+      if(Math.abs(cash-cur)>1){
+        localStorage.setItem('myBudget', String(cash));
+        try{ if(typeof refreshFundPanel==='function') refreshFundPanel(); }catch(e){}
+      }
+    }catch(e){}
+  }
+
+  function all(){ try{ backfillLog(); syncCash(); renderPlan(); renderTrades(); }catch(e){} }
   window.__planBoard={render:all, plan:renderPlan, log:renderTrades};
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){ setTimeout(all,1200); }); else setTimeout(all,1200);
   setInterval(function(){ if(!document.hidden) all(); },5000);
