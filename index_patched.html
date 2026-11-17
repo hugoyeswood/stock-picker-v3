@@ -2375,7 +2375,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261117n38';
+  var BUILD='20261117n39';
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
 
@@ -2434,7 +2434,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-17 10:12"></script>
+<script src="./update-check.js" data-page-upd="2026-11-17 10:15"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -4155,6 +4155,16 @@ setInterval(_stCheck, 1000);
           +'（'+why+'）回款¥'+f2(amt));
       }
       localStorage.setItem('myAutoLog', JSON.stringify(lines.slice(-30)));
+      /* 同步刷新「自动操作记录」块，避免它仍停在旧的空缓存 */
+      var lg=$('autoLogList');
+      if(lg){
+        var h=[], s, k2, n2b=lines.length;
+        for(k2=n2b-1;k2>=0 && k2>=n2b-8;k2--){
+          s=lines[k2];
+          h.push('<div style="padding:3px 0;border-bottom:1px dashed #eee;font-size:11px;color:#444;">'+s+'</div>');
+        }
+        lg.innerHTML=h.join('')||'<div style="color:#999;font-size:12px;">暂无自动操作记录</div>';
+      }
     }catch(e){}
   }
 
