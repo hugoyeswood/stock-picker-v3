@@ -2478,7 +2478,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261118n75';
+  var BUILD='20261118n76';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2502,7 +2502,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261118n75'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261118n76'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -2539,7 +2539,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-18 14:34"></script>
+<script src="./update-check.js" data-page-upd="2026-11-18 14:45"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -3264,7 +3264,7 @@ setInterval(_stCheck, 1000);
   function autoHoldings(){
     var trades=getTrades(), h={};
     trades.forEach(function(t){
-      if(!t.auto) return;
+      if(!t.auto && t.type!=='buy') return;
       if(!h[t.code]) h[t.code]={code:t.code,name:t.name,qty:0,cost:0,tp:0,sl:0,entry:0,buyDay:'',buyTs:0};
       var q=(isFinite(+t.qty)?+t.qty:0);
       /* 老账本买入记录没有 type（只有 auto:true 且无 reason），必须按买入处理，否则会被当成卖出扣成负持仓 */
