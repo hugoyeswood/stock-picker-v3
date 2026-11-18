@@ -1102,7 +1102,12 @@ function dispName(name,code){
   // n60：账本里存在 name 被写成代码的情况（如 sh600550），此时回退行情名称缓存
   var bad=(n===''||n==='undefined'||/^(sh|sz|bj)\d{6}$/i.test(n)||/^\d{6}$/.test(n));
   if(!bad) return n;
-  if(code&&_NM_CACHE[code]) return _NM_CACHE[code];
+  // n61：名称缓存键可能是纯 6 位代码，带前缀时两种键都试
+  if(code){
+    if(_NM_CACHE[code]) return _NM_CACHE[code];
+    var k6=String(code).slice(-6);
+    if(_NM_CACHE[k6]) return _NM_CACHE[k6];
+  }
   return code?('标的'+String(code).slice(-6)):'未知标的';
 }
 window.__dispName=dispName; window.__rememberNames=rememberNames;
@@ -2468,7 +2473,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261118n60';
+  var BUILD='20261118n61';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
