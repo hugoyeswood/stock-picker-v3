@@ -1,1 +1,1 @@
-{"frozen":true,"allow_auto_buy":false,"allow_manual_sell":true,"reasons":["【演练】验证熔断联动：权威账本不可读时，自动买入必须被禁止"],"detail":{"test":true},"at":"2026-11-18 16:21:29","ts":1794990089,"build":"20261118n79"}
+{"frozen":false,"allow_auto_buy":true,"allow_manual_sell":true,"reasons":[],"detail":{"skipped":"非交易时段"},"at":"2026-11-18 16:28:39","ts":1794990519,"build":"20261118n80"}
