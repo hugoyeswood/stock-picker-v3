@@ -2478,7 +2478,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261118n79';
+  var BUILD='20261118n80';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2502,7 +2502,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261118n79'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261118n80'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -4467,6 +4467,7 @@ setInterval(_stCheck, 1000);
 
 
 
+
 <!--SC-PACK-->
 
 <style id="scStyle">
@@ -4513,6 +4514,8 @@ setInterval(_stCheck, 1000);
     else if(FAIL){ cls='warn'; txt='⚠ 自检 '+FAIL+' 项异常 · 点击查看'; }
     else { txt='✅ 自检通过 '+ITEMS.length+'/'+ITEMS.length+' · '+hhmm(); }
     bar.className=cls; bar.textContent=txt; bar.style.display='block';
+    /* 必须在异步检查完成后再同步标志，否则会读到初始 false */
+    window.__SC_FREEZE=!!FZ;
     document.body.style.paddingTop = (FZ||FAIL) ? '28px' : '';
     if(!FZ && !FAIL){ setTimeout(function(){ bar.style.display='none'; document.body.style.paddingTop=''; },4500); }
 
@@ -4588,10 +4591,8 @@ setInterval(_stCheck, 1000);
     frozen:function(){ return FZ; }};
   window.__SC_FREEZE=false;
 
-  /* autoBuy 会在入口读这个标志；这里每次刷新同步一次 */
-  function syncFlag(){ window.__SC_FREEZE=!!FZ; }
-  var _run=run;
-  window.__SC.run=function(){ _run(); setTimeout(syncFlag,0); };
+  /* 标志由 paint() 在检查完成后同步；此处只保留对外入口 */
+  window.__SC.run=run;
 
   function boot(){
     if(!document.getElementById('scBar')) return;
