@@ -1488,6 +1488,7 @@ function refreshRealtime(){
         list.forEach(function(code){
           var pe = m.p[code], ce = m.c[code];
           if(!window._pfWarn){ try{ _lastPrice[pf(code)] = price; }catch(e){ window._pfWarn=1; } } else { try{ _lastPrice[pf(code)] = price; }catch(e){} }
+          if(parts[1]&&(!_NM_CACHE[code]||/^(sh|sz|bj)\d{6}$/i.test(String(_NM_CACHE[code])))){ _NM_CACHE[code]=parts[1]; }
           _lastPrice[code] = price; _lastChg[code] = chg; _lastPrev[code] = parseFloat(parts[4]); _lastVol[code] = parseFloat(parts[49]); _lastTr[code] = parseFloat(parts[38]); _lastAmp[code] = parseFloat(parts[43]); _lastAvg[code] = parseFloat(parts[51]); _lastHigh[code] = parseFloat(parts[33]); _lastLow[code] = parseFloat(parts[34]); _lastO[code] = parseFloat(parts[7]); _lastI[code] = parseFloat(parts[8]);
           if(pe) pe.textContent = '¥' + price.toFixed(2);
           if(ce){ ce.textContent = (chg>=0?'+':'') + chg.toFixed(2) + '%'; ce.style.color = chg>=0 ? '#d32f2f' : '#2e7d32'; }
@@ -2477,7 +2478,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261118n63';
+  var BUILD='20261118n64';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2771,7 +2772,7 @@ function sellAll(code,name,price){
       }
       var c=pnl>=0?'#c62828':'#2e7d32';
       rows+='<div style="padding:3px 0;border-bottom:1px dashed #eee;">'
-        +'<div style="display:flex;justify-content:space-between;"><span>'+x.name+' <span style="color:#999;">'+x.code+'</span> · '+q0+'股 @'+(c0?f2(avg):'<span style="color:#c62828;">未录入</span>')+' 现'+f2(p)+'</span>'
+        +'<div style="display:flex;justify-content:space-between;"><span>'+dispName(x.name,x.code)+' <span style="color:#999;">'+x.code+'</span> · '+q0+'股 @'+(c0?f2(avg):'<span style="color:#c62828;">未录入</span>')+' 现'+f2(p)+'</span>'
         +(c0?('<b style="color:'+c+';">'+money(pnl)+' ('+f2(pnl/c0*100)+'%)</b>'):'<b style="color:#c62828;font-size:11px;">成本缺失</b>')
         +'</div>'
         +'<div style="color:#888;font-size:11px;">本周 '+wkCell+' · 今日 '+(raw?money((p-pc)*q0):'--')+'</div></div>';
