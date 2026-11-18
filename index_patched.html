@@ -2478,7 +2478,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261118n77';
+  var BUILD='20261118n78';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2502,7 +2502,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261118n77'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261118n78'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -3373,6 +3373,12 @@ setInterval(_stCheck, 1000);
 
   function autoBuy(code,name,price,qty,entry,tp,sl){
     name=dispName(name,code);
+    /* 安全包熔断闸门：权威账本与本地不一致时，宁可不下单，也不重复建仓。
+       卖出永远不受此限制（保护本金优先）。 */
+    if(window.__SC_FREEZE){
+      notify('🔴 熔断中，自动买入已暂停 '+name+'（账本未同步，可手动卖出）','#c62828');
+      return false;
+    }
     if(!window.__pullDone) return false;   /* 同上：同步未完成前不下单也不报错 */
     /* 云端账本未同步时不开新仓：本地账本可能是旧数据，买入会把资金口径带偏 */
     if(!window.__cloudHold || (Date.now()-(window.__cloudAt||0))>10*60*1000){
@@ -4458,4 +4464,142 @@ setInterval(_stCheck, 1000);
 })();
 </script>
 
+
+<!--SC-PACK-->
+
+<style id="scStyle">
+#scBar{position:fixed;left:0;right:0;top:0;z-index:99999;font:12px/1.5 -apple-system,"PingFang SC",sans-serif;
+ padding:6px 10px;color:#fff;background:#1b5e20;display:none;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+#scBar.warn{background:#c62828}
+#scBar.freeze{background:#b71c1c}
+#scDetail{position:fixed;left:6px;right:6px;top:36px;z-index:99998;background:#fff;border-radius:10px;
+ padding:10px 12px;font:12px/1.6 -apple-system,"PingFang SC",sans-serif;color:#222;display:none;
+ box-shadow:0 4px 18px rgba(0,0,0,.25);max-height:70vh;overflow:auto}
+#scDetail h4{margin:0 0 6px;font-size:13px}
+#scDetail .it{padding:3px 0;border-bottom:1px dashed #eee;word-break:break-all}
+#scDetail button{margin-top:9px;padding:7px 12px;border:0;border-radius:8px;background:#1565c0;color:#fff;font-size:12px}
+#scDetail .close{background:#eceff1;color:#37474f;margin-left:8px}
+</style>
+
+<div id="scBar"></div>
+<div id="scDetail"></div>
+<script id="scScript">
+/* 安全包 · 客户端自检层
+   目的：把「坏了要能自己发现」前移到手机上——不依赖后台有没有在跑。
+   检查：版本新鲜度 / 推荐 5 只与止盈止损口径 / 权威账本可读 / 熔断标志 / 缓存注册
+   熔断：freeze.json 若为 frozen，则强制禁止自动买入（卖出永远放行） */
+(function(){
+  if(window.__SC_LOADED) return; window.__SC_LOADED=1;
+  var ITEMS=[], FAIL=0, FZ=false, FZR='', LAST=0;
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function hhmm(){ var d=new Date(); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); }
+  function rec(id,ok,msg){ ITEMS.push({id:id,ok:!!ok,msg:msg}); if(!ok) FAIL++; }
+  function j(u){
+    return fetch(u+'?nc='+Date.now(),{cache:'no-store'}).then(function(r){
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      return r.json();
+    });
+  }
+
+  function paint(){
+    var bar=document.getElementById('scBar'), det=document.getElementById('scDetail');
+    if(!bar) return;
+    var cls='', txt;
+    if(FZ){ cls='freeze'; txt='🔴 数据未同步 · 自动买入已暂停（卖出仍可手动） · 点击查看'; }
+    else if(FAIL){ cls='warn'; txt='⚠ 自检 '+FAIL+' 项异常 · 点击查看'; }
+    else { txt='✅ 自检通过 '+ITEMS.length+'/'+ITEMS.length+' · '+hhmm(); }
+    bar.className=cls; bar.textContent=txt; bar.style.display='block';
+    document.body.style.paddingTop = (FZ||FAIL) ? '28px' : '';
+    if(!FZ && !FAIL){ setTimeout(function(){ bar.style.display='none'; document.body.style.paddingTop=''; },4500); }
+
+    var h='<h4>系统自检 · '+hhmm()+' · '+(window.__BUILD||'')+'</h4>';
+    for(var i=0;i<ITEMS.length;i++){
+      var it=ITEMS[i];
+      h+='<div class="it">'+(it.ok?'✅':'❌')+' <b>'+esc(it.id)+'</b> '+esc(it.msg)+'</div>';
+    }
+    if(FZ) h+='<div class="it" style="color:#b71c1c">🔴 熔断原因：'+esc(FZR)+'</div>';
+    h+='<button id="scFix">强制更新缓存并重载</button><button id="scClose" class="close">关闭</button>';
+    det.innerHTML=h; det.style.display='block';
+    document.getElementById('scClose').onclick=function(){ det.style.display='none'; };
+    document.getElementById('scFix').onclick=function(){
+      try{
+        if(navigator.serviceWorker&&navigator.serviceWorker.getRegistrations){
+          navigator.serviceWorker.getRegistrations().then(function(rs){
+            for(var i=0;i<rs.length;i++) rs[i].unregister();
+            location.reload(true);
+          });
+          return;
+        }
+      }catch(e){}
+      location.reload(true);
+    };
+  }
+
+  function run(){
+    ITEMS=[]; FAIL=0;
+    var tasks=[
+      j('./version.json').then(function(v){
+        var b=String(window.__BUILD||'');
+        rec('版本',v.v===b,'页面 '+b+' / 线上 '+(v.v||'?')+(v.v===b?'':'（点下方按钮更新）'));
+      }).catch(function(e){ rec('版本',false,'version.json 读取失败 '+e.message); }),
+
+      j('./short_term_rec.json').then(function(d){
+        var s=(d&&d.stocks)||[], bad=[];
+        if(s.length!==5) bad.push('只数='+s.length+'（应为5）');
+        for(var i=0;i<s.length;i++){
+          var x=s[i], en=Number(x.entry||0);
+          if(!en){ bad.push(x.code+'缺entry'); continue; }
+          if(Math.abs(Number(x.take_profit)-Math.round(en*1.10*100)/100)>0.02) bad.push(x.code+'止盈≠×1.10');
+          if(Math.abs(Number(x.stop_loss)-Math.round(en*0.95*100)/100)>0.02) bad.push(x.code+'止损≠×0.95');
+        }
+        rec('推荐',!bad.length, bad.length?bad.join('、'):(s.length+'只 · 止盈=entry×1.10 · 止损×0.95'));
+      }).catch(function(e){ rec('推荐',false,'推荐数据读取失败 '+e.message); }),
+
+      j('./ledger.json').then(function(d){
+        var dd=(d&&d.d)||{}, tr=null;
+        try{ tr=(typeof dd.myTrades==='string')?JSON.parse(dd.myTrades):dd.myTrades; }catch(e){ tr=null; }
+        var n=(tr&&tr.length)||0, bud=Number(dd.myBudget||0);
+        rec('账本', n>0 && bud>0, n+'笔 · 可用¥'+bud.toFixed(2));
+      }).catch(function(e){ rec('账本',false,'权威账本读取失败 '+e.message); }),
+
+      j('./freeze.json').then(function(f){
+        FZ=!!(f&&f.frozen); FZR=((f&&f.reasons)||[]).join('；');
+        rec('熔断',!FZ, FZ?('已冻结：'+FZR):'未触发');
+      }).catch(function(){ FZ=false; rec('熔断',true,'无熔断文件（视为正常）'); }),
+
+      new Promise(function(res){
+        try{
+          if(!navigator.serviceWorker||!navigator.serviceWorker.getRegistration){ res(rec('缓存',true,'浏览器不支持SW，跳过')); return; }
+          navigator.serviceWorker.getRegistration().then(function(r){
+            res(rec('缓存',!!r, r?'已注册离线缓存':'未注册（可能吃到旧壳，点下方按钮修复）'));
+          }).catch(function(){ res(rec('缓存',false,'SW 状态读取失败')); });
+        }catch(e){ res(rec('缓存',false,'SW 异常')); }
+      })
+    ];
+    Promise.all(tasks).then(function(){ LAST=Date.now(); window.__SC_STATE={items:ITEMS,fail:FAIL,frozen:FZ}; paint(); })
+      .catch(function(){ paint(); });
+  }
+
+  window.__SC={run:run, state:function(){return window.__SC_STATE||{};},
+    frozen:function(){ return FZ; }};
+  window.__SC_FREEZE=false;
+
+  /* autoBuy 会在入口读这个标志；这里每次刷新同步一次 */
+  function syncFlag(){ window.__SC_FREEZE=!!FZ; }
+  var _run=run;
+  window.__SC.run=function(){ _run(); setTimeout(syncFlag,0); };
+
+  function boot(){
+    if(!document.getElementById('scBar')) return;
+    window.__SC.run();
+    setInterval(function(){ if(!document.hidden && Date.now()-LAST>10*60*1000) window.__SC.run(); },60000);
+    document.addEventListener('visibilitychange',function(){ if(!document.hidden) window.__SC.run(); });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else setTimeout(boot,300);
+})();
+</script>
+
+<!--SC-PACK-->-END
 </body></html>
