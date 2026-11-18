@@ -147,7 +147,7 @@
      "code": "sh603285",
      "name": "键邦股份",
      "entry": 25.34,
-     "close": null,
+     "close": 24.76,
      "day1_close": null,
      "chg": null,
      "score": 12,
@@ -157,11 +157,41 @@
      "code": "sz002533",
      "name": "金杯电工",
      "entry": 10.34,
-     "close": null,
+     "close": 10.43,
      "day1_close": null,
      "chg": null,
      "score": 11,
      "src": "09:00开市前重排"
+    },
+    {
+     "code": "sz002674",
+     "name": "兴业科技",
+     "entry": 15.99,
+     "close": 15.99,
+     "day1_close": 15.99,
+     "chg": 1.78,
+     "score": 12,
+     "src": "2026-11-18 13:07 午市换股补位"
+    },
+    {
+     "code": "sh600360",
+     "name": "华微电子",
+     "entry": 8.01,
+     "close": 8.01,
+     "day1_close": 8.01,
+     "chg": 1.65,
+     "score": 11,
+     "src": "2026-11-18 13:07 午市换股补位"
+    },
+    {
+     "code": "sh600651",
+     "name": "飞乐音响",
+     "entry": 4.83,
+     "close": 4.83,
+     "day1_close": 4.83,
+     "chg": 0.84,
+     "score": 11,
+     "src": "2026-11-18 13:07 午市换股补位"
     }
    ]
   }
@@ -198,5 +228,5 @@
    ]
   }
  ],
- "updated": "2026-11-18 09:08"
+ "updated": "2026-11-18 13:08"
 }
