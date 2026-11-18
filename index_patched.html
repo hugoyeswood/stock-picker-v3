@@ -1664,6 +1664,7 @@ function showMonthReport(){
 }
 function closeMonthReport(){ var m=document.getElementById('monthReportModal'); if(m) m.style.display='none'; }
 function refreshHoldings(){
+  if(document.hidden) return;   // n59 后台不刷新
   var hs=getHoldings(), el=document.getElementById('holdingsList');
   if(!el) return;
   if(!hs.length){ _priceMap=null; el.innerHTML='<div class="h-empty">暂无持仓：搜索买入后自动实时跟进</div>'; return; }
@@ -2135,6 +2136,7 @@ function fetchStRec(){
 }
 var _lastStSig='';
 function refreshShortTerm(){
+  if(document.hidden) return;   // n59 后台不刷新
   var el=document.getElementById('stRecContainer'); if(!el) return;
   fetchStRec().then(function(j){
     if(!j||!j.stocks) return;
@@ -2463,7 +2465,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261118n58';
+  var BUILD='20261118n59';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2832,6 +2834,7 @@ function sellAll(code,name,price){
     return true;
   }
   function pull(silent,mode){
+    if(document.hidden) return;  // n59 后台不拉取
     var t=topic(); if(!t) return;
     fetch('https://ntfy.sh/'+t+'/json?poll=1&since=12h')
       .then(function(r){ return r.text(); })
@@ -3823,6 +3826,7 @@ setInterval(_stCheck, 1000);
   /* 权威快照窗口：守卫数小时不推送时，1h 窗口会拉空，本机旧账本就会继续冒充实时口径
      （手机端 可用4568.89 / 总资产9969.89 这类错误即由此而来）。故按 6h → 24h → 本地缓存 三级兜底。 */
   function pull(){
+    if(document.hidden) return;  // n59 后台不拉取
     if(pulling) return; pulling=true;
     var finished=false;
     function finish(){ if(!finished){ finished=true; pulling=false; } }
