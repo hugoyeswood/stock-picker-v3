@@ -1098,7 +1098,10 @@ function getTrades(){ try{ var v=JSON.parse(localStorage.getItem('myTrades')||''
 var _NM_CACHE={};
 function rememberNames(list){ try{ (list||[]).forEach(function(s){ if(s&&s.code&&s.name&&String(s.name)!=='undefined') _NM_CACHE[s.code]=s.name; }); }catch(e){} }
 function dispName(name,code){
-  if(name!==undefined&&name!==null&&String(name).trim()!==''&&String(name)!=='undefined') return String(name);
+  var n=(name===undefined||name===null)?'':String(name).trim();
+  // n60：账本里存在 name 被写成代码的情况（如 sh600550），此时回退行情名称缓存
+  var bad=(n===''||n==='undefined'||/^(sh|sz|bj)\d{6}$/i.test(n)||/^\d{6}$/.test(n));
+  if(!bad) return n;
   if(code&&_NM_CACHE[code]) return _NM_CACHE[code];
   return code?('标的'+String(code).slice(-6)):'未知标的';
 }
@@ -1685,7 +1688,7 @@ function refreshHoldings(){
       tdyCol=tv>=0?'color:#d32f2f;font-weight:800;':'color:#2e7d32;font-weight:800;';
     }
     html+='<div class="h-item">'+
-      '<div class="h-top"><b>'+h.name+'</b><span class="st-code">'+h.code+'</span><span class="h-qty">持仓 '+h.qty+'股</span><button class="h-ops" data-holdop="open" data-code="'+h.code+'">⚙️ 操作</button></div>'+
+      '<div class="h-top"><b>'+dispName(h.name,h.code)+'</b><span class="st-code">'+h.code+'</span><span class="h-qty">持仓 '+h.qty+'股</span><button class="h-ops" data-holdop="open" data-code="'+h.code+'">⚙️ 操作</button></div>'+
       '<div class="h-row">成本 <b>¥'+cost.toFixed(2)+'</b> · 现价 <b class="price" data-code="'+h.code+'">'+(lp?'¥'+lp.toFixed(2):'--')+'</b> <span class="chg" data-code="'+h.code+'" style="'+lcCol+'">'+lcTxt+'</span></div>'+
       '<div class="h-row">📅 今日盈亏：<b id="tdy_'+h.code+'" style="'+tdyCol+'">'+tdyTxt+'</b>'+(pc0?' <span style="color:#999;font-size:12px;">（昨收 ¥'+pc0.toFixed(2)+'）</span>':'')+'</div>'+
       '<div class="h-row">📈 止盈线：<b style="color:#2e7d32;" data-edit="'+h.code+':tp" title="点击修改">¥'+tp.toFixed(2)+'（+'+tpPct+'%）</b></div>'+
@@ -2465,7 +2468,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261118n59';
+  var BUILD='20261118n60';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
