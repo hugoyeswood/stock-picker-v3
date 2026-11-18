@@ -2478,7 +2478,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261118n69';
+  var BUILD='20261118n70';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -3330,6 +3330,7 @@ setInterval(_stCheck, 1000);
 
   function autoSell(code,name,price,qty,reason,h){
     if(!qty||qty<=0) return false;
+    if(!window.__pullDone) return false;   /* 首轮云端账本同步完成前静默跳过，避免误报拦截 */
     name=dispName(name,code);
     /* 闸门①：卖出股数以本机流水重放的在手股数为上限，杜绝 1800 股这类翻倍幽灵单 */
     var _hs=getHoldings(), _held=0;
@@ -3372,6 +3373,7 @@ setInterval(_stCheck, 1000);
 
   function autoBuy(code,name,price,qty,entry,tp,sl){
     name=dispName(name,code);
+    if(!window.__pullDone) return false;   /* 同上：同步未完成前不下单也不报错 */
     /* 云端账本未同步时不开新仓：本地账本可能是旧数据，买入会把资金口径带偏 */
     if(!window.__cloudHold || (Date.now()-(window.__cloudAt||0))>10*60*1000){
       notify('🤖 买入拦截 '+name+'：云端账本未同步，自动交易暂停','#c62828'); return false;
@@ -3815,7 +3817,7 @@ setInterval(_stCheck, 1000);
         if(_sell) _pos[t.code]=Math.max(0,_pos[t.code]-q); else _pos[t.code]+=q;
       });
       window.__cloudHold=_pos; window.__cloudAt=master.at; window.__cloudCount=_n;
-      window.__cloudStale=false;
+      window.__cloudStale=false; window.__pullDone=true;
       try{ window.__rememberNames(_tr); }catch(e){}
     }catch(e){}
     saveMaster(master);
