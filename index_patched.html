@@ -2478,7 +2478,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261118n80';
+  var BUILD='20261119n81';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2502,7 +2502,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261118n80'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261119n81'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -2539,7 +2539,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-18 15:06"></script>
+<script src="./update-check.js" data-page-upd="2026-11-19 07:45"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -3874,16 +3874,31 @@ setInterval(_stCheck, 1000);
     /* n72 同源兜底：ntfy.sh 在部分移动网络不可达时，改从本站 ledger.json 取权威账本，
        否则页面永远「未连接」→ __pullDone 不置位 → 自动买卖被静默拦住（今日 13:00 后空仓即此因）。 */
     function attemptGH(onDone){
-      fetch('ledger.json?nc='+Date.now()).then(function(r){ return r.text(); }).then(function(t){
-        var m=null; try{ m=JSON.parse(t); }catch(e){}
-        if(m && m.d && m.at){
-          var age=Date.now()-m.at;
-          consumeMaster(m);
-          if(age>600000){ window.__cloudStale=true; setBar('云端账本 '+(Math.round(age/60000))+' 分钟未更新（缓存）',false); }
-          onDone(); return;
-        }
-        onDone();
-      }).catch(function(){ onDone(); });
+      /* n81 实时账本：GitHub Pages 对 ledger.json 下发 cache-control:max-age=600（10分钟），
+         恰好等于客户端 10 分钟新鲜度阈值 → 每隔一阵必读到旧账本而误判「未同步」，自动买卖被拦。
+         改为优先直读 raw.githubusercontent.com（无 CDN、约0.5秒、允许跨域、带 nc 破缓存），
+         失败才回落本站同源副本。 */
+      var _cands=[
+        'https://raw.githubusercontent.com/hugoyeswood/stock-picker-v3/main/ledger.json?nc='+Date.now(),
+        'ledger.json?nc='+Date.now()
+      ];
+      function tryOne(i){
+        if(i>=_cands.length){ onDone(); return; }
+        fetch(_cands[i],{cache:'no-store'}).then(function(r){
+          if(!r.ok){ throw new Error('http '+r.status); }
+          return r.text();
+        }).then(function(t){
+          var m=null; try{ m=JSON.parse(t); }catch(e){}
+          if(m && m.d && m.at){
+            var age=Date.now()-m.at;
+            consumeMaster(m);
+            if(age>600000){ window.__cloudStale=true; setBar('云端账本 '+(Math.round(age/60000))+' 分钟未更新（缓存）',false); }
+            onDone(); return;
+          }
+          tryOne(i+1);
+        }).catch(function(){ tryOne(i+1); });
+      }
+      tryOne(0);
     }
     attempt('6h', function(){ attempt('24h', function(){ attemptGH(useCache); }); });
   }
