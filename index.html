@@ -4307,6 +4307,7 @@ setInterval(_stCheck, 1000);
     var el=$('tradeLogList'); if(!el) return;
     var tr=trades();
     if(!tr.length){ el.innerHTML='<div style="color:#888;font-size:12px;">暂无交易记录</div>'; var s0=$('tradeLogSum'); if(s0) s0.textContent='0 笔'; return; }
+    var nm={}; try{ document.querySelectorAll('#stRecContainer [data-name]').forEach(function(b){ nm[b.getAttribute('data-code')]=b.getAttribute('data-name'); }); }catch(e){}
     var arr=[];
     for(var i=0;i<tr.length;i++){
       var x=tr[i]; if(!x||!x.code) continue;
@@ -4341,7 +4342,7 @@ setInterval(_stCheck, 1000);
       var why = o.reason || o.sellReason || (sell?'卖出':'买区成交');
       rows+='<div style="padding:5px 0;border-bottom:1px dashed #eee;font-size:12px;">'
         +'<div style="display:flex;justify-content:space-between;align-items:center;">'
-        +'<span>'+badge+' '+o.name+' <span style="color:#999;">'+o.code+'</span></span>'
+        +'<span>'+badge+' '+(o.name||nm[o.code]||o.code)+' <span style="color:#999;">'+o.code+'</span></span>'
         +'<span style="color:#333;">'+qty+'股 @'+f2(p)+'</span></div>'
         +'<div style="color:#888;font-size:11px;display:flex;justify-content:space-between;">'
         +'<span>'+hhmm(arr[k].at)+' · '+why+'</span><span>金额¥'+f2(amt)+' '+pnlTxt+'</span></div></div>';
@@ -4376,7 +4377,8 @@ setInterval(_stCheck, 1000);
       var qty=qm?n2(qm[1]):0;
       cnt++;
       var p=px(code), lo=entry*0.97, st, cl;
-      if(hs[code]||bought[code]){ st='✅ 已买入 · 持有中'; cl='#2e7d32'; }
+      if(hs[code] && n2(hs[code].qty)>0){ st='✅ 已买入 · 持有中'; cl='#2e7d32'; }
+      else if(bought[code]){ st='⚪ 今日已卖出 · 已离场'; cl='#888'; }
       else if(p>0 && p>=lo && p<=entry*1.02){ st='🟡 在买区(+2%容差) · 待成交'; cl='#ef6c00'; }
       else if(p>0 && p>entry){ st='⚪ 高于买区（'+(f2(p))+'）'; cl='#888'; }
       else if(p>0){ st='⚪ 低于买区（破位不追）'; cl='#888'; }
