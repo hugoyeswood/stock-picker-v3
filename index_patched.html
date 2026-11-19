@@ -2482,7 +2482,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261119n88';
+  var BUILD='20261119n89';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -3860,7 +3860,17 @@ setInterval(_stCheck, 1000);
             if(!last || m.at>last.at) last=m;
             var ncs=0; try{ ncs=(m.d&&m.d.myTrades)?(JSON.parse(m.d.myTrades)||[]).length:(m.d&&m.d.tc)||0; }catch(e){ ncs=0; }
             var mn=0; try{ mn=(window.__mmN||0); }catch(e){}
-            if(String(m.lock)==='1' && m.owner && (!master || ncs>master.__n || (ncs===master.__n && m.at>master.at))){ m.__n=ncs; master=m; }
+            /* 2026-11-19 PATCH-07：结转快照(compact=1)优先于普通快照。
+               原因：原规则「笔数最多者胜」会让结转后的 10 笔永远输给结转前的 37 笔，
+               页面就会一直按旧账本算，结转等于没做。 */
+            if(String(m.lock)==='1' && m.owner){
+              var _isC=(m.compact===1||m.compact==='1')?1:0;
+              m.__n=ncs; m.__c=_isC;
+              if(!master) master=m;
+              else if(_isC && !master.__c) master=m;                          /* 结转 > 普通 */
+              else if(_isC && master.__c && m.at>master.at) master=m;         /* 结转之间取最新 */
+              else if(!_isC && !master.__c && (ncs>master.__n || (ncs===master.__n && m.at>master.at))) master=m; /* 普通之间原规则 */
+            }
           }
         }
       }catch(e){}
