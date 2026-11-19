@@ -2517,7 +2517,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261120n98';
+  var BUILD='20261120n99';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2541,7 +2541,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=n98'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=n99'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -2578,7 +2578,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-20 08:36"></script>
+<script src="./update-check.js" data-page-upd="2026-11-20 08:48"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -4678,8 +4678,12 @@ setInterval(_stCheck, 1000);
           if(Math.abs(Number(x.take_profit)-Math.round(en*1.10*100)/100)>0.02) bad.push(x.code+'止盈≠×1.10');
           if(Math.abs(Number(x.stop_loss)-Math.round(en*0.95*100)/100)>0.02) bad.push(x.code+'止损≠×0.95');
         }
-        if(d&&d.halt){ bad.push('资金熔断已触发（禁止开仓）'); }
-        rec('推荐',!bad.length, bad.length?bad.join('、'):(s.length?s.length+'只 · 止盈=entry×1.10 · 止损×0.95':'空仓 0 只 · 按纪律不凑数'));
+        var _ok=!bad.length, _txt;
+        if(bad.length) _txt=bad.join('、');
+        else if(d&&d.halt) _txt='空仓 '+s.length+' 只 · 资金熔断中（禁止开仓，属保护生效）';
+        else if(s.length) _txt=s.length+'只 · 止盈=entry×1.10 · 止损×0.95';
+        else _txt='空仓 0 只 · 按纪律不凑数';
+        rec('推荐',_ok,_txt);
       }).catch(function(e){ rec('推荐',false,'推荐数据读取失败 '+e.message); }),
 
       j('./ledger.json').then(function(d){
