@@ -2478,7 +2478,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261119n86';
+  var BUILD='20261119n87';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -3377,6 +3377,22 @@ setInterval(_stCheck, 1000);
        卖出永远不受此限制（保护本金优先）。 */
     if(window.__SC_FREEZE){
       notify('🔴 熔断中，自动买入已暂停 '+name+'（账本未同步，可手动卖出）','#c62828');
+      return false;
+    }
+    /* ===== 2026-11-19 盈利闸（PATCH-05）：不加这两道，弱势日会继续扫下跌票 ===== */
+    /* 闸① 环境闸：上证跌幅≤-0.5% 视为弱势日，当日不开新仓。
+       反例：11-19 上证-0.70%，开盘扫单买入5只全部下跌（-1%~-2.5%），当日亏损231.68元。 */
+    try{
+      var _ix = (typeof IDX!=='undefined' && IDX) ? IDX : window.IDX;
+      if(_ix && (+_ix.chg || 0) <= -0.5){
+        notify('🛡 环境闸拦下 '+name+'：大盘 '+((+_ix.chg||0).toFixed(2))+'%（弱势日不开新仓）','#c62828');
+        return false;
+      }
+    }catch(e){}
+    /* 闸② 费用闸：单笔<1200元时最低5元佣金把费率抬到0.47%/边、往返近1%，吃掉全部 edge。
+       L-015 实测：<1200 元单笔费率 0.478%/边，2000+ 元仅 0.199%/边。 */
+    if(price*qty < 1200){
+      notify('🛡 费用闸拦下 '+name+'：单笔 '+(price*qty).toFixed(0)+' 元 <1200，往返费率过高','#c62828');
       return false;
     }
     if(!window.__pullDone) return false;   /* 同上：同步未完成前不下单也不报错 */
