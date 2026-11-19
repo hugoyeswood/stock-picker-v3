@@ -1,14 +1,14 @@
 {
  "date": "2026-11-19",
- "ts": "2026-11-19 10:32",
+ "ts": "2026-11-19 13:09",
  "source": "pick_daily V3.3 两阶段(门槛8·ALERT收紧·全凯利2054·买区×0.97~×1.0)",
  "budget": 10000.0,
  "stocks": [
   {
    "code": "sz001387",
    "name": "雪祺电气",
-   "price": 10.2,
-   "chg": -2.95,
+   "price": 10.11,
+   "chg": -3.81,
    "qty": "1手（100股）",
    "score": 12,
    "lv": 1,
@@ -27,13 +27,14 @@
    "entry": 10.51,
    "price_now": 10.22,
    "shares": 100,
-   "amount": 1051.0
+   "amount": 1051.0,
+   "turnover": 4.04
   },
   {
    "code": "sz001368",
    "name": "通达创智",
-   "price": 22.15,
-   "chg": -2.12,
+   "price": 22.37,
+   "chg": -1.15,
    "qty": "1手（100股）",
    "score": 12,
    "lv": 1,
@@ -52,13 +53,14 @@
    "entry": 22.63,
    "price_now": 22.73,
    "shares": 100,
-   "amount": 2263.0
+   "amount": 2263.0,
+   "turnover": 2.62
   },
   {
    "code": "sh601083",
    "name": "XD锦江航",
-   "price": 13.69,
-   "chg": -1.23,
+   "price": 13.72,
+   "chg": -1.01,
    "qty": "1手（100股）",
    "score": 8,
    "lv": 2,
@@ -77,11 +79,12 @@
    "entry": 13.86,
    "price_now": 13.84,
    "shares": 100,
-   "amount": 1386.0
+   "amount": 1386.0,
+   "turnover": 5.23
   }
  ],
  "checked_at": "2026-11-19 08:39",
- "updated": "2026-11-19 08:39",
+ "updated": "2026-11-19 13:09",
  "price_base": "2026-11-18 15:00 收盘价",
  "total_amount": 9107.0,
  "cash_left": 893.0,
