@@ -1010,7 +1010,7 @@ function isBuyT(t){ return !!(t && (t.type==='buy' || (t.type===undefined && (t.
 function isSellT(t){ return !!(t && (t.type==='sell' || (t.type===undefined && t.auto && !!(t.reason||t.sellReason)))); }
 function replayLedger(){
   var tr=getTrades().slice().sort(function(a,b){ return _tKey(a)-_tKey(b); });
-  var cash=LT_BASE_ASSET, pos={}, dup=0, i, bA=0, bF=0, sA=0, sF=0;
+  var cash=LT_BASE_ASSET, pos={}, dup=0, i;
   for(i=0;i<tr.length;i++){
     var t=tr[i]; if(!t||!t.code) continue;
     var q=+t.qty||0, p=+t.price||0, amt=(+t.amount>0?+t.amount:p*q);
@@ -1019,11 +1019,10 @@ function replayLedger(){
        与云端守卫 tools/cloud_guard.py 的 calc_cash 完全同口径，保证手机/电脑/守卫三处一个数。 */
     var _sell=isSellT(t), fee=calcFee(amt, _sell?'sell':'buy');
     if(isBuyT(t)){
-      cash-=(amt+fee); bA+=amt; bF+=fee;
+      cash-=(amt+fee);
       var o=pos[t.code]||(pos[t.code]={code:t.code,name:t.name||t.code,qty:0,amt:0,fee:0});
       o.qty+=q; o.amt+=amt; o.fee+=fee; if(t.name) o.name=t.name;
     } else if(isSellT(t)){
-      sA+=amt; sF+=fee;
       var h=pos[t.code];
       if(!h||h.qty<=0){ dup++; continue; }
       var qq=(q<h.qty?q:h.qty); if(q>h.qty) dup++;
@@ -1034,9 +1033,6 @@ function replayLedger(){
       if(h.qty<=0){ h.qty=0; h.amt=0; h.fee=0; }
     }
   }
-  /* 2026-11-19 总额法：顺序法在 11-16→11-17 时序不自洽的流水上会把现金算成 6778.90（真实 6800.21），
-     与云端账本差 21.30 元。改为 本金-买入总额-买入费+卖出总额-卖出费，与账本/守卫同口径。 */
-  cash=LT_BASE_ASSET-bA-bF+sA-sF;
   var mv=0, held=[];
   for(var k in pos){ var o2=pos[k]; if(!o2||o2.qty<=0) continue;
     mv+=(_lastPrice[k]||0)*o2.qty;
@@ -2482,7 +2478,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261119n84';
+  var BUILD='20261119n85';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
