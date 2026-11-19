@@ -2482,7 +2482,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261119n95';
+  var BUILD='20261119n96';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2506,7 +2506,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=n95'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=n96'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -2543,7 +2543,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-19 14:34"></script>
+<script src="./update-check.js" data-page-upd="2026-11-19 15:41"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -3383,6 +3383,18 @@ setInterval(_stCheck, 1000);
       notify('🔴 熔断中，自动买入已暂停 '+name+'（账本未同步，可手动卖出）','#c62828');
       return false;
     }
+
+    /* ===== PATCH-14 资金熔断（2026-11-19 用户要求「确定利益」）=====
+       硬顶，不是概率判断：净值跌破本金-5%（9500元）或当日实亏≥150元 → 全面停止开新仓。
+       最坏情况被锁定在 -500 元附近，不会无限扩大。恢复必须手动。
+       反例：11-19 净值 9484.40（-5.16%）仍被允许扫单买入，当日再亏 231.68 元。 */
+    try{
+      var _h = (typeof recToday!=='undefined' && recToday) ? recToday : null;
+      if(_h && _h.halt){
+        notify('\u{1F6D1} 资金熔断：'+(_h.halt_reason||'账户触及回撤底线')+' —— 暂停买入 '+name,'#c62828');
+        return false;
+      }
+    }catch(e){}
     /* ===== 2026-11-19 盈利闸（PATCH-05）：不加这两道，弱势日会继续扫下跌票 ===== */
     /* 闸① 环境闸：上证跌幅≤-0.5% 视为弱势日，当日不开新仓。
        反例：11-19 上证-0.70%，开盘扫单买入5只全部下跌（-1%~-2.5%），当日亏损231.68元。 */
