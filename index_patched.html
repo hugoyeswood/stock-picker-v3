@@ -2482,7 +2482,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261119n90';
+  var BUILD='20261119n91';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2506,7 +2506,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=n90'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=n91'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -2543,7 +2543,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-19 10:32"></script>
+<script src="./update-check.js" data-page-upd="2026-11-19 10:52"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -3399,6 +3399,31 @@ setInterval(_stCheck, 1000);
       notify('🛡 费用闸拦下 '+name+'：单笔 '+(price*qty).toFixed(0)+' 元 <1200，往返费率过高','#c62828');
       return false;
     }
+    /* ===== PATCH-12 入场质量闸（2026-11-19 用户定稿口径：推荐≠必买） =====
+       依据：①飞乐音响因操作慢，亏损冲破了止损范围；②紫光股份买进来就已经贴着止损线。
+       原则：只要判断「后期没有增长」，哪怕这只已经在推荐名单里，也放弃买入、保留现金。
+       三道子闸只做减法（只减少买入，不放大仓位）： */
+    try{
+      var _e=+entry||0, _slv=+sl||0, _p=+price||0;
+      /* ① 开盘已破位：现价低于推荐价 1% 以上 → 推荐逻辑当场失效 */
+      if(_e>0 && _p>0 && _p < _e*0.99){
+        notify('⏸ 主动放弃 '+name+'：现价 '+_p.toFixed(2)+' 低于推荐价 '+_e.toFixed(2)+' 达 '+(((_e-_p)/_e)*100).toFixed(2)+'%，增长预期已消失，不买','#e65100');
+        return false;
+      }
+      /* ② 贴止损线：现价距止损缓冲 <1.5% → 买进去就等止损，风险收益比崩坏（紫光教训） */
+      if(_slv>0 && _p>0 && _p <= _slv*1.015){
+        notify('⏸ 主动放弃 '+name+'：现价 '+_p.toFixed(2)+' 距止损线 '+_slv.toFixed(2)+' 仅 '+(((_p-_slv)/_slv)*100).toFixed(2)+'%，买进就贴止损，不买','#e65100');
+        return false;
+      }
+      /* ③ 仍在向下：日内 ≤-1.5% 说明杀跌未止，没有反弹动能 */
+      var _ce=document.querySelector('.st-chg[data-code="'+code+'"]');
+      var _cg=_ce?parseFloat((_ce.innerText||'').replace('%','')):NaN;
+      if(!isNaN(_cg) && _cg<=-1.5){
+        notify('⏸ 主动放弃 '+name+'：日内 '+_cg.toFixed(2)+'% 仍在下坠，等企稳再说，不买','#e65100');
+        return false;
+      }
+    }catch(e){}
+
     if(!window.__pullDone) return false;   /* 同上：同步未完成前不下单也不报错 */
     /* 云端账本未同步时不开新仓：本地账本可能是旧数据，买入会把资金口径带偏 */
     if(!window.__cloudHold || (Date.now()-(window.__cloudAt||0))>10*60*1000){
