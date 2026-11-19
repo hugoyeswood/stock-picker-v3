@@ -204,9 +204,9 @@
      "entry": 10.51,
      "close": null,
      "day1_close": null,
-     "chg": 0.86,
-     "score": 13,
-     "src": "2026-11-19 07:53 收盘选股"
+     "chg": 0.0,
+     "score": 12,
+     "src": "2026-11-18 收盘选股"
     },
     {
      "code": "sz001368",
@@ -214,9 +214,9 @@
      "entry": 22.63,
      "close": null,
      "day1_close": null,
-     "chg": 1.39,
+     "chg": 0.0,
      "score": 12,
-     "src": "2026-11-19 07:53 收盘选股"
+     "src": "2026-11-18 收盘选股"
     },
     {
      "code": "sz000938",
@@ -224,9 +224,29 @@
      "entry": 25.11,
      "close": null,
      "day1_close": null,
-     "chg": 1.66,
+     "chg": 0.0,
      "score": 11,
-     "src": "2026-11-19 07:53 收盘选股"
+     "src": "2026-11-18 收盘选股"
+    },
+    {
+     "code": "sz002406",
+     "name": "远东传动",
+     "entry": 6.32,
+     "close": null,
+     "day1_close": null,
+     "chg": 0.0,
+     "score": 11,
+     "src": "2026-11-18 收盘选股"
+    },
+    {
+     "code": "sh601083",
+     "name": "XD锦江航",
+     "entry": 13.86,
+     "close": null,
+     "day1_close": null,
+     "chg": 0.0,
+     "score": 8,
+     "src": "2026-11-18 收盘选股"
     }
    ]
   }
@@ -271,5 +291,5 @@
    ]
   }
  ],
- "updated": "2026-11-19 07:53"
+ "updated": "2026-11-19 08:40"
 }
