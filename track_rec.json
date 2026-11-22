@@ -249,6 +249,61 @@
      "src": "2026-11-18 收盘选股"
     }
    ]
+  },
+  {
+   "date": "2026-11-23",
+   "stocks": [
+    {
+     "code": "sz002815",
+     "name": "崇达技术",
+     "entry": 13.6,
+     "close": null,
+     "day1_close": null,
+     "chg": 0.89,
+     "score": 12,
+     "src": "2026-11-23 07:35 收盘选股（门槛8）"
+    },
+    {
+     "code": "sz000725",
+     "name": "京东方Ａ",
+     "entry": 4.39,
+     "close": null,
+     "day1_close": null,
+     "chg": 1.39,
+     "score": 12,
+     "src": "2026-11-23 07:35 收盘选股（门槛8）"
+    },
+    {
+     "code": "sh603886",
+     "name": "元祖股份",
+     "entry": 11.2,
+     "close": null,
+     "day1_close": null,
+     "chg": 0.81,
+     "score": 11,
+     "src": "2026-11-23 07:35 收盘选股（门槛8）"
+    },
+    {
+     "code": "sh600186",
+     "name": "莲花控股",
+     "entry": 9.07,
+     "close": null,
+     "day1_close": null,
+     "chg": 0.67,
+     "score": 11,
+     "src": "2026-11-23 07:35 收盘选股（门槛8）"
+    },
+    {
+     "code": "sz000100",
+     "name": "TCL科技",
+     "entry": 4.9,
+     "close": null,
+     "day1_close": null,
+     "chg": 1.87,
+     "score": 9,
+     "src": "2026-11-23 07:35 收盘选股（门槛8）"
+    }
+   ]
   }
  ],
  "rows": [
@@ -291,5 +346,5 @@
    ]
   }
  ],
- "updated": "2026-11-19 08:40"
+ "updated": "2026-11-23 07:35"
 }
