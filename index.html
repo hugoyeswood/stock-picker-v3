@@ -2500,7 +2500,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261123n112';
+  var BUILD='20261123n113';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2524,7 +2524,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261123n112'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261123n113'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -2561,7 +2561,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-23 10:40"></script>
+<script src="./update-check.js" data-page-upd="2026-11-23 11:20"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -3213,7 +3213,7 @@ setInterval(_stCheck, 1000);
   /* 日内快进快出（2026-11-17 用户口径）：允许当日买入当日卖出。
      与 tools/guard_config.json 的 intraday 段严格同口径：tp 2%、sl 1.2%、最短持有 15 分钟。
      往返费用约 0.55%（佣金最低5元+印花税0.05%+过户费），止盈 2% 净赚约 1.4%。*/
-  var INTRADAY=true, INTRADAY_TP=0.025, INTRADAY_SL=0.012, INTRADAY_MIN_HOLD_MS=10*60*1000;
+  var INTRADAY=false, INTRADAY_TP=0.025, INTRADAY_SL=0.012  /* 2026-11-23 与guard_config intraday.enable=false 统一：日内1.2%窄止损实测0胜6负，停用 */, INTRADAY_MIN_HOLD_MS=10*60*1000;
   /* ===== 资金安全参数（2026-11-16：每秒计算 + 确认成交 + 确保资金安全）===== */
   var SAFE={ maxHold:3, maxPosRatio:0.60, dayLossStop:0.03, confirmSec:2, staleSec:30, maxFail:3, failCoolMin:5 };
   var _sigQ={}, _failN=0, _failAt=0;
@@ -3403,7 +3403,7 @@ setInterval(_stCheck, 1000);
     }
 
     /* ===== PATCH-14 资金熔断（2026-11-19 用户要求「确定利益」）=====
-       硬顶，不是概率判断：净值跌破本金-5%（9500元）或当日实亏≥150元 → 全面停止开新仓。
+       硬顶，不是概率判断：净值跌破本金-5%（9500元）或跌至二次熔断线9234.15元（再回撤2%），或当日实亏≥150元 → 全面停止开新仓。
        最坏情况被锁定在 -500 元附近，不会无限扩大。恢复必须手动。
        反例：11-19 净值 9484.40（-5.16%）仍被允许扫单买入，当日再亏 231.68 元。 */
     try{
@@ -3548,11 +3548,7 @@ setInterval(_stCheck, 1000);
       if(h.tp>0 && p>=h.tp) reason='止盈';
       else if(h.sl>0 && p<=h.sl) reason='止损';
       /* 2026-11-16 与云端守卫统一：三条尾盘锁利默认关闭（TAIL_LOCK=false），避免误砍微赚票 */
-      else if(TAIL_LOCK && hm>=1440 && h.cost>0 && h.qty>0 && (p/(h.cost/h.qty)-1)>=0.02) reason='尾盘锁利';
-      else if(TAIL_LOCK && hm>=1430 && h.cost>0 && h.qty>0 && (p/(h.cost/h.qty)-1)>=0.006) reason='微利锁';
-      else if(TAIL_LOCK && hm>=1445 && h.cost>0 && h.qty>0 && p>=(h.cost/h.qty)) reason='尾盘保本';
       else if(isFriday() && hm>=1430) reason='周五清仓（不过周末）';
-      else if(h.buyDay && h.buyDay<day && hm>=940) reason='持有满1日';
       }
       if(!reason) return;
       if(!confirmSig('S'+h.code,'sell',reason)) return;
@@ -3564,8 +3560,8 @@ setInterval(_stCheck, 1000);
 
     /* --- 大盘风控闸：上证跌幅 ≤ -1% 当日不建新仓（数据每 5 秒刷新）--- */
     var idxc = window.__IDX_CHG;
-    if(typeof idxc === 'number' && idxc <= -1){
-      if(st){ st.textContent='风控停手 · 上证 '+idxc.toFixed(2)+'%（今日不建仓）'; st.style.color='#c62828'; }
+    if(typeof idxc === 'number' && idxc <= -0.5){
+      if(st){ st.textContent='风控停手 · 上证 '+idxc.toFixed(2)+'%（≤-0.5% 当日不建仓，与 buy_gate G1 同源）'; st.style.color='#c62828'; }
       return;
     }
 
