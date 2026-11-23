@@ -2202,7 +2202,8 @@ function recalcRecLines(){
     var ref=it.querySelector('.st-ref');
     if(ref) ref.innerHTML='买入区间 <b>'+lo+'~'+hi+'</b> · 止损 <b>'+sl+'</b> · 止盈 <b>'+tp+'</b>';
     // 2026-11-23：徽标按实时价重算——涨破买区上沿=等回踩，跌破下沿=跌破买区，避免静态“可买”误导追高
-    var px=parseFloat((pe.textContent||'').replace(/[^0-9.]/g,''));
+    var _lp=(typeof px==='function')?(+px(code)||0):0;
+    var px=_lp>0?_lp:parseFloat((pe.textContent||'').replace(/[^0-9.]/g,''));
     var badge=it.querySelector('.st-badge');
     if(badge && px>0 && /可买|等回踩|跌破买区/.test(badge.textContent||'')){
       if(px>parseFloat(hi)){ badge.textContent='⚠️ 等回踩'; badge.style.background='#ef6c00'; }
@@ -2499,7 +2500,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261123n107';
+  var BUILD='20261123n108';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2523,7 +2524,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261123n107'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261123n108'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -2560,7 +2561,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-23 10:12"></script>
+<script src="./update-check.js" data-page-upd="2026-11-23 10:26"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
