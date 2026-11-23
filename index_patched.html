@@ -1004,9 +1004,16 @@ var LT_BASE_DATE='2026-11-16', LT_BASE_ASSET=10000.00;
    治三类脏数据：①旧设备残留可用资金（曾 10187 / 10080 凭空多出）②同一笔重复卖出（回款进两次）
    ③账本被旧设备回滚后重复记账。卖出超过在手股数的部分直接判脏单跳过。 */
 function _tKey(t){ if(t && t.ts) return +t.ts;
-  var s=String((t&&t.time)||'').replace(/[^\d]+/g,' ').trim().split(/\s+/); if(s.length<3) return 0;
-  return new Date(+s[0],(+s[1]||1)-1,(+s[2]||1),(+s[3]||0),(+s[4]||0),(+s[5]||0)).getTime()||0; }
-function isBuyT(t){ return !!(t && (t.type==='buy' || (t.type===undefined && (t.auto||t.buy) && !t.reason && !t.sellReason))); }
+  /* 2026-11-23 修正：账本时间有「YYYY-MM-DD HH:MM:SS」和「MM/DD HH:MM」（守卫/手机混写）两种格式，
+     原实现按 3 段数字解析，把「11/17 10:02」当成 1911 年 → 卖出排到买入前面 → 被当重复单跳过，
+     页面可用资金虚低 23.11 元（9399.49 vs 账本 9422.60）。改双正则分别解析。 */
+  var s=String((t&&t.time)||'');
+  var m=s.match(/(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})(?:[ T]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if(m) return new Date(+m[1],+m[2]-1,+m[3],+m[4]||0,+m[5]||0,+m[6]||0).getTime()||0;
+  m=s.match(/^\s*(\d{1,2})[-\/.](\d{1,2})(?:[ T]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if(m) return new Date(new Date().getFullYear(),+m[1]-1,+m[2],+m[3]||0,+m[4]||0,+m[5]||0).getTime()||0;
+  return 0; }
+function isBuyT(t){ return !!(t && (t.type==='buy' || ((t.type===undefined||t.type===null) && !t.reason && !t.sellReason && ((+t.qty||0)>0)))); }
 function isSellT(t){ return !!(t && (t.type==='sell' || (t.type===undefined && t.auto && !!(t.reason||t.sellReason)))); }
 function replayLedger(){
   var tr=getTrades().slice().sort(function(a,b){ return _tKey(a)-_tKey(b); });
@@ -1021,7 +1028,9 @@ function replayLedger(){
     /* 费用一律按实际扣费标准重算（佣金0.025%最低5 + 过户0.002% + 卖出印花税0.1%），
        不再信任账本里的 fee 字段：历史上有 6 笔没写 fee，按 0 处理会让可用资金虚增 32 元。
        与云端守卫 tools/cloud_guard.py 的 calc_cash 完全同口径，保证手机/电脑/守卫三处一个数。 */
-    var _sell=isSellT(t), fee=calcFee(amt, _sell?'sell':'buy');
+    /* 2026-11-23：账本若已记录真实佣金（fee 字段）就按记录计，只有缺记录才用模型估算；
+       模型对 11-20 两笔卖出多算 1.80 元，会让页面 9420.80 与云端 9422.60 对不上。 */
+    var _sell=isSellT(t), fee=((typeof t.fee==='number'&&t.fee>0)?t.fee:calcFee(amt, _sell?'sell':'buy'));
     if(isBuyT(t)){
       cash-=(amt+fee);
       var o=pos[t.code]||(pos[t.code]={code:t.code,name:t.name||t.code,qty:0,amt:0,fee:0});
@@ -2482,7 +2491,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261123n102';
+  var BUILD='20261123n103';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2506,7 +2515,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261123n102'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261123n103'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -2543,7 +2552,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-23 08:12"></script>
+<script src="./update-check.js" data-page-upd="2026-11-23 08:52"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -3874,7 +3883,10 @@ setInterval(_stCheck, 1000);
       if(typeof _tr==='string'){ try{ _tr=JSON.parse(_tr); }catch(e){ _tr=null; } }
       var _pos={}, _n=0;
       (_tr||[]).forEach(function(t){
-        if(!t||!t.code) return; _n++;
+        if(!t) return;
+        _n++;                      /* 2026-11-23：笔数按账本实际条数统计（含 adjust 结转），
+                                      原先跳过无 code 的 adjust 会显示 12 笔而云端是 13 笔 */
+        if(!t.code) return;
         var q=+t.qty||0; _pos[t.code]=_pos[t.code]||0;
         var _sell=(t.type==='sell')||(t.type===undefined&&t.auto&&t.reason);
         if(_sell) _pos[t.code]=Math.max(0,_pos[t.code]-q); else _pos[t.code]+=q;
