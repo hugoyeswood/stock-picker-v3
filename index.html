@@ -2491,7 +2491,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261123n103';
+  var BUILD='20261123n104';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2515,7 +2515,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261123n103'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261123n104'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -2552,7 +2552,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-23 08:52"></script>
+<script src="./update-check.js" data-page-upd="2026-11-23 08:58"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -3971,7 +3971,14 @@ setInterval(_stCheck, 1000);
           if(m && m.d && m.at){
             var age=Date.now()-m.at;
             consumeMaster(m);
-            if(age>600000){ window.__cloudStale=true; setBar('云端账本 '+(Math.round(age/60000))+' 分钟未更新（缓存）',false); }
+            /* 2026-11-23 修正：账本 at 是「最后变动时间」，空仓期没有新成交本来就不会变。
+               原判据只看 age>10min，把「3 天无成交」误报成红色「未更新（缓存）」。
+               改为：只有当天有成交、却没收到新推送，才算真滞后。 */
+            var _ltr=m.d&&m.d.myTrades; if(typeof _ltr==='string'){ try{ _ltr=JSON.parse(_ltr); }catch(e){ _ltr=[]; } }
+            var _lk=0; (_ltr||[]).forEach(function(t){ var k=_tKey(t); if(k>_lk) _lk=k; });
+            var _t0=new Date(); _t0.setHours(0,0,0,0);
+            if(age>600000 && _lk>=_t0.getTime()){ window.__cloudStale=true; setBar('云端账本 '+(Math.round(age/60000))+' 分钟未更新（当日有成交待推送）',false); }
+            else { window.__cloudStale=false; }
             onDone(); return;
           }
           tryOne(i+1);
