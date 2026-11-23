@@ -2500,7 +2500,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261123n114';
+  var BUILD='20261123n115';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2524,7 +2524,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261123n114'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261123n115'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -2561,7 +2561,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-23 10:48"></script>
+<script src="./update-check.js" data-page-upd="2026-11-23 11:22"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -2982,6 +2982,29 @@ function _stCheck(){
   }catch(e){}
 }
 setInterval(_stCheck, 1000);
+(function(){ // ===== 系统健康红条：读 site_status.json（云端巡检生成）=====
+  var fired = false;
+  function shown(){
+    try{
+      fetch('./site_status.json?nc=' + Date.now(), {cache:'no-store'})
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(s){
+          if(!s || fired || s.ok) return;
+          var lines = [];
+          if(s.main && !s.main.ok) lines.push('主站自动构建：' + s.main.note);
+          if(s.v3 && !s.v3.ok) lines.push('今日名单：' + s.v3.note);
+          if(s.ledger && !s.ledger.ok) lines.push('账本核对：' + s.ledger.note);
+          if(!lines.length) return;
+          fired = true;
+          _stAlertBar('⚠️ 系统自检 · ' + lines.join(' ｜ ') + '<br><span style="opacity:.85">巡检时间 ' + (s.at || '--') + '</span>', '#b71c1c');
+        })
+        .catch(function(){});
+    }catch(e){}
+  }
+  if(document.readyState === 'complete') setTimeout(shown, 2000);
+  else window.addEventListener('load', function(){ setTimeout(shown, 2000); });
+  setInterval(shown, 21600000);
+})();
 (function(){
   function ask(){
     try{ if(window.__nbAskPerm && ('Notification' in window) && Notification.permission === 'default'){ window.__nbAskPerm(function(){}); } }catch(e){}
