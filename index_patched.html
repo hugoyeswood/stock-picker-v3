@@ -1108,7 +1108,10 @@ function _holdReport(){
     fetch('https://ntfy.sh/'+HOLD_TOPIC,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify(p)}).catch(function(){});
   }catch(e){}
 }
-setTimeout(_holdReport,4000); setInterval(_holdReport,600000);
+/* n28：首次上报必须等云端真值到手，否则脏设备会用本机账本覆盖云端快照 */
+var _hrTries=0;
+function _holdReportSafe(){ try{ if(!(window.__HT&&window.__HT.ok) && _hrTries<10){ _hrTries++; setTimeout(_holdReportSafe,2500); return; } }catch(e){} _holdReport(); }
+setTimeout(_holdReportSafe,4000); setInterval(_holdReportSafe,600000);
 
 // ===== 交易费用 =====
 function calcFee(amount,type){ var c=Math.max(amount*0.00025,5); var t=amount*0.00002; var s=0; if(type==='sell') s=amount*0.001; return c+t+s; }
@@ -2620,7 +2623,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261124n27';
+  var BUILD='20261124n28';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2644,7 +2647,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261124n27'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261124n28'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -2681,7 +2684,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-24 17:20"></script>
+<script src="./update-check.js" data-page-upd="2026-11-24 18:06"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
