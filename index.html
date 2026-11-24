@@ -929,7 +929,7 @@
   <div class="card-top"><div class="name">📊 我的持仓 · 实时跟进</div><div class="st-date">每2秒实时重算 · 触发即提醒</div></div>
   <div class="h-alert" id="alertBar" style="display:none"></div>
   <div class="h-toolbar"><button onclick="enableNotify()" class="h-notify">🔔 开启预警通知</button><button onclick="showAdviceRules()" class="h-notify" style="background:#1a237e;">📖 加仓/抛售规则</button><button onclick="showMonthReport()" class="h-notify" style="background:#e65100;">📊 本月持仓报告</button><button onclick="exportBackup()" class="h-bak">💾 备份数据</button><button onclick="importBackup()" class="h-bak" style="background:#455a64;">♻️ 恢复数据</button><button onclick="showCloudBackup()" class="h-bak" style="background:#00838f;">☁️ 云备份</button><span class="h-tip">点击数值可修改止盈线/止损线</span></div>
-  <div id="holdingsList"><div class="h-empty">暂无持仓：搜索买入后自动实时跟进</div></div>
+  <div id="htBar" style="display:none;font-size:11px;padding:6px 8px;border-radius:8px;margin:6px 0;line-height:1.5;"></div><div id="holdingsList"><div class="h-empty">暂无持仓：搜索买入后自动实时跟进</div></div>
   <div class="h-hint">⚠️ 实时监控：现价每秒更新 → 建议每2秒重算 → 触发立即弹提醒（紧急10分钟 / 普通15分钟冷却，不重复骚扰）；模拟交易仅记录本地，不构成投资建议</div>
 </div>
 <div class="card w-card">
@@ -1059,6 +1059,14 @@ function calcFund(){ var principal=getPrincipal();
   }
   var lg=replayLedger();
   var cash=lg.cash, mv=lg.mv, total=cash+mv;
+  /* n27：云端真值生效时，现金与市值跟云端持仓（价格用实时行情） */
+  try{ if(window.__HT && window.__HT.ok && window.__HT.use){
+    cash=(+window.__HT.cash||0); mv=0;
+    window.__HT.holdings.forEach(function(h){ var q=+h.qty||0;
+      var p=0; try{ p=(typeof _lastPrice!=='undefined' && _lastPrice && _lastPrice[h.code])||0; }catch(e){}
+      if(!p) p=(+h.last_price||+h.cost||0); mv+=q*p; });
+    total=cash+mv;
+  } }catch(e){}
   try{ if(Math.abs((parseFloat(localStorage.getItem('myBudget'))||0)-cash)>1){ localStorage.setItem('myBudget',String(cash)); } }catch(e){}
   return { cash:cash, principal:principal, mv:mv, total:total, totalPnl:total-LT_BASE_ASSET, dupBad:lg.dup, todayPnl:calcTodayPnL() }; }
 function pnlClass(v,kind){ if(v>0) return kind==='today'?'fp-gold':'fp-blackgold'; if(v<0) return 'fp-darkgreen'; return ''; }
@@ -1620,7 +1628,99 @@ function loadHS(){ try{ return JSON.parse(localStorage.getItem('myHS')||'{}'); }
 function saveHS(o){ localStorage.setItem('myHS', JSON.stringify(o)); }
 function loadAlerts(){ try{ return JSON.parse(localStorage.getItem('myAlerts')||'{}'); }catch(e){ return {}; } }
 function saveAlerts(o){ localStorage.setItem('myAlerts', JSON.stringify(o)); }
+
+/* ===== n27 两端同步补丁（2026-11-24 用户要求：手机端与电脑端必须同步，退出/进后台回来也要拉最新）=====
+   问题根因：持仓与现金此前全部由「本机 localStorage 账本重放」得出，手机与电脑各存一份账本，
+   谁的账本旧就显示旧持仓（例：依顿电子已清仓 200 股，手机端仍显示持仓 100 股、成本 9.51）。
+   修法：以 GitHub 上的 holdings.json 为云端权威快照（ts 为毫秒时间戳，cash/mv/holdings 齐全）；
+   云端 ts ≥ 本地最后一笔成交时间 → 显示与资金面板一律用云端；本地更新（刚下单）→ 仍用本地。
+   同步触发：pageshow（含 bfcache 恢复）/ focus / online / visibilitychange / 每 120 秒。 */
+window.__HT = {ok:false, at:0, ts:0, use:false, holdings:[], cash:0, total:0};
+function _htTs(s){
+  try{ var m=String(s||'').match(/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?/); if(!m) return 0;
+    return new Date(new Date().getFullYear(), +m[1]-1, +m[2], +m[3], +m[4], +(m[5]||0)).getTime(); }catch(e){ return 0; }
+}
+
+function _htTsISO(s){
+  try{ var m=String(s||'').match(/(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{1,2})/); if(!m) return 0;
+    return new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], 0).getTime(); }catch(e){ return 0; }
+}
+function _htLocalTs(){
+  var t=0; try{ getTrades().forEach(function(x){ var v=_htTs(x && x.time); if(v>t) t=v; }); }catch(e){}
+  return t;
+}
+function _htDiff(){
+  var out=[]; try{
+    if(!window.__HT.ok) return out;
+    var L={}, C={}, N={};
+    getHoldings().forEach(function(h){ L[h.code]=+h.qty||0; });
+    window.__HT.holdings.forEach(function(h){ C[h.code]=+h.qty||0; N[h.code]=h.name||h.code; });
+    for(var k in C){ if((L[k]||0)!==C[k]) out.push((N[k]||k)+(L[k]?(' 本机'+L[k]+'股→云端'+C[k]+'股'):(' 本机无→云端'+C[k]+'股'))); }
+    for(var k2 in L){ if(!(k2 in C)) out.push(k2+' 本机'+L[k2]+'股→云端已清仓'); }
+  }catch(e){}
+  return out;
+}
+function _htBar(show){
+  var b=document.getElementById('htBar'); if(!b) return;
+  if(!show){ b.style.display='none'; return; }
+  var diff=_htDiff(), ts=window.__HT.ts;
+  var t=ts? new Date(ts).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '--';
+  b.style.display='block';
+  b.style.background = diff.length ? '#fff3e0' : '#e8f5e9';
+  b.style.color = diff.length ? '#e65100' : '#2e7d32';
+  b.innerHTML = (window.__HT.use?'☁️ 云端权威 · ':'📱 本机较新 · ') + '快照 '+t
+    + (diff.length ? ('　⚠ 已按云端校准 '+diff.length+' 处：'+diff.join('；')) : '　两端一致 ✓')
+    + '<div style="font-size:10px;color:#888;margin-top:2px;">退出或切后台再回来会自动重拉（'+(window.__SYNC_AT?new Date(window.__SYNC_AT).toLocaleTimeString('zh-CN'):'--')+'）</div>';
+}
+function pullHoldTruth(cb){
+  var settled=false;
+  function apply(j){
+    if(settled) return; settled=true;
+    try{
+      if(j && Array.isArray(j.holdings) && (j.ts||j.cash)){
+        var ts=Math.max(+j.ts||0, _htTsISO(j.updated)); if(!ts || (Date.now()-ts) < 7*86400000){
+          window.__HT={ok:true, at:Date.now(), ts:ts, use:false,
+                       holdings:j.holdings.slice(), cash:+j.cash||0, total:+j.total||0};
+          window.__HT.use = (ts>0 && ts>=_htLocalTs());
+          _htBar(true);
+          try{ refreshFundPanel(); }catch(e){}
+          try{ refreshHoldings(); }catch(e){}
+        }
+      }
+    }catch(e){}
+    if(cb) try{ cb(); }catch(e){}
+  }
+  var u1='holdings.json?nc='+Date.now();
+  var u2='https://raw.githubusercontent.com/hugoyeswood/stock-picker-v3/main/holdings.json?nc='+Date.now();
+  try{
+    fetch(u1,{cache:'no-store'}).then(function(r){ if(!r.ok) throw 0; return r.json(); })
+      .then(function(j){ apply(j); })
+      .catch(function(){ fetch(u2,{cache:'no-store'}).then(function(r){ return r.json(); }).then(apply).catch(function(){ settled=true; if(cb) try{cb();}catch(e){} }); });
+  }catch(e){ if(cb) try{cb();}catch(e){} }
+}
+function __forceSync(){
+  window.__SYNC_AT=Date.now();
+  try{ pullHoldTruth(); }catch(e){}
+  try{ window.__pullGuardDec && window.__pullGuardDec(); }catch(e){}
+  try{ window.__pullCloudNow && window.__pullCloudNow(); }catch(e){}
+  try{ if(!document.hidden){ refreshHoldings(); refreshFundPanel(); } }catch(e){}
+}
+try{
+  window.addEventListener('pageshow', function(){ __forceSync(); });
+  window.addEventListener('focus', function(){ __forceSync(); });
+  window.addEventListener('online', function(){ __forceSync(); });
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden) __forceSync(); });
+  setTimeout(function(){ __forceSync(); }, 900);
+  setInterval(function(){ __forceSync(); }, 120000);
+}catch(e){}
+window.__forceSync=__forceSync; window.__pullHoldTruth=pullHoldTruth;
+
 function getHoldings(){
+  /* n27：云端真值生效时优先用 holdings.json（两端同源），否则回落本机账本重放 */
+  try{ if(window.__HT && window.__HT.ok && window.__HT.use){
+    var _o=[]; window.__HT.holdings.forEach(function(h){ var _q=+h.qty||0; if(_q>0) _o.push({code:h.code,name:h.name,qty:_q,cost:(+h.cost||0)*_q,fee:0}); });
+    return _o;
+  } }catch(e){}
   /* 持仓一律由流水重放得出：卖出超过在手股数的重复记账会被跳过，
      老账本里没有 type 字段的买入（只有 auto:true）也不会再被当成卖出扣成负持仓。 */
   try{ return replayLedger().holdings.slice(); }catch(e){
@@ -1691,7 +1791,7 @@ function showMonthReport(){
 }
 function closeMonthReport(){ var m=document.getElementById('monthReportModal'); if(m) m.style.display='none'; }
 function refreshHoldings(){
-  if(document.hidden) return;   // n59 后台不刷新
+  /* n27：后台不再早退——数据变了不重绘，回到前台会看到旧持仓 */
   var hs=getHoldings(), el=document.getElementById('holdingsList');
   if(!el) return;
   if(!hs.length){ _priceMap=null; el.innerHTML='<div class="h-empty">暂无持仓：搜索买入后自动实时跟进</div>'; return; }
@@ -2520,7 +2620,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261124n26';
+  var BUILD='20261124n27';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2544,7 +2644,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261124n26'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261124n27'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -2581,7 +2681,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-24 16:54"></script>
+<script src="./update-check.js" data-page-upd="2026-11-24 17:20"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -2944,6 +3044,7 @@ function sellAll(code,name,price){
   }
   setTimeout(function(){ ui(); hookTrades(); if(topic()) start(); },1500);
   document.addEventListener('visibilitychange',function(){ if(!document.hidden && topic()) pull(true); });
+  try{ window.__pullCloudNow=function(){ if(topic()) pull(true); }; }catch(e){}
   window.__cloudPush=push; window.__cloudPull=pull;
 })();
 </script>
