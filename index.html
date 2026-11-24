@@ -1875,7 +1875,7 @@ function updateStWarn(){
 }
 function holdTimer(){ refreshHoldings(); updateStWarn(); updateVolPanels(); updatePnL(); monitorAlerts(); refreshWatch(); refreshRealtime(); refreshFundPanel(); }
 window.__holdTimer = setInterval(holdTimer, 2000); // 报价跟随
-setInterval(function(){ refreshHoldings(); refreshFundPanel(); updatePnL(); }, 60000); // 持仓面板每分钟整体刷新
+setInterval(function(){ refreshHoldings(); refreshFundPanel(); updatePnL(); }, 5000); // n13：持仓/资金面板 5 秒跟随行情（原 60 秒会让总资产长时间只显示现金、市值 0）
 setTimeout(holdTimer, 500);  // 页面加载后先刷一次
 // ===== 今日短线推荐目录：每15分钟fetch最新JSON重渲染（确保可买+短线高增长） =====
 function escHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -2506,7 +2506,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261124n13';
+  var BUILD='20261124n14';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2530,7 +2530,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261124n13'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261124n14'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -2567,7 +2567,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-24 14:30"></script>
+<script src="./update-check.js" data-page-upd="2026-11-24 14:37"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
