@@ -1862,7 +1862,12 @@ function updateStWarn(){
     if(tp&&p>=tp) m='🚨 已达涨值巅峰，建议落袋/勿追高';
     else if(sl&&p<=sl) m='🔻 已破止损线，注意止损';
     else if(!isNaN(chg)&&chg>=9.5) m='🚀 强势逼近涨停，追高风险大';
-    else if(tp&&sl&&p>sl&&p<tp) m='✅ 区间内，可按建议买入区间分批';
+    else {
+      var it=el; while(it&&it!==document.body&&(!it.className||String(it.className).indexOf('st-item')<0)) it=it.parentNode;
+      var en=(it&&it.getAttribute)? parseFloat(it.getAttribute('data-entry')||'0'):0;
+      if(en&&p>en*1.001) m='⏸ 已高于买区上限 ¥'+en.toFixed(2)+'，不追高（等回踩再买）';
+      else if(tp&&sl&&p>sl&&p<tp) m='✅ 区间内，可按建议买入区间分批';
+    }
     el.innerHTML=m;
     el.style.color=(m.indexOf('🚨')===0||m.indexOf('🔻')===0)?'#c62828':'#2e7d32';
   });
@@ -2500,7 +2505,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261124n3';
+  var BUILD='20261124n4';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2524,7 +2529,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261124n3'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261124n4'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
