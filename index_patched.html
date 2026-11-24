@@ -2506,7 +2506,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261124n20';
+  var BUILD='20261124n21';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2530,7 +2530,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261124n20'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261124n21'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -2567,7 +2567,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-24 15:08"></script>
+<script src="./update-check.js" data-page-upd="2026-11-24 16:40"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -3322,6 +3322,40 @@ setInterval(_stCheck, 1000);
     }catch(e){ return KELLY_CAP; }
   }
   window.__dynCap=dynCap;
+
+  /* n21（2026-11-24 复盘问题④）：卡片「建议股数」是满额口径，放款后实买更少 → 卡片同步显示预算实买，
+     避免"写着3手、只买了2手"的口径打架。数值来自同一个 dynCap()，与 autoBuy 完全一致。 */
+  function refreshQtyHint(){
+    try{
+      if(!window.__pullDone) return;
+      var cap=(window.__dynCap?window.__dynCap():0);
+      if(!(cap>0)) return;
+      var cash=0;
+      try{ var _f=calcFund(); cash=(_f&&_f.cash)||0; }catch(e){}
+      var items=document.querySelectorAll('.st-item');
+      for(var i=0;i<items.length;i++){
+        var it=items[i];
+        var ce=it.querySelector('.st-price');
+        var code=ce?ce.getAttribute('data-code'):'';
+        var p=(window.__lastPrice&&window.__lastPrice[code])||(_lastPrice[code]);
+        if(!(p>0) && ce){ p=parseFloat(String(ce.textContent).replace(/[¥,]/g,''))||0; }
+        if(!(p>0)) continue;
+        var q=Math.floor(cap/p/100)*100;
+        if(q<100 && cash>=p*100*1.002) q=100;
+        var box=it.querySelector('.st-qty');
+        if(!box) continue;
+        if(!box.getAttribute('data-base')) box.setAttribute('data-base', box.innerHTML);
+        var extra = q>=100
+          ? '　<b style="color:#00695c;font-size:12px;">预算约 ¥'+Math.round(cap)+' → 实买 '+q+' 股</b>'
+          : '　<b style="color:#ef6c00;font-size:12px;">预算不足，今日不建</b>';
+        box.innerHTML = box.getAttribute('data-base') + extra;
+      }
+    }catch(e){}
+  }
+  window.__refreshQtyHint=refreshQtyHint;
+  setTimeout(refreshQtyHint, 6000);
+  setInterval(refreshQtyHint, 20000);
+
   var _sigQ={}, _failN=0, _failAt=0;
   function pad(n){ return (n<10?'0':'')+n; }
   function dayStr(d){ d=d||new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
