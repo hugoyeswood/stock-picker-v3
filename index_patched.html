@@ -1086,7 +1086,7 @@ function refreshFundPanel(){ refreshHeadMeta(); var el=document.getElementById('
   var _ct=_ca?(_ca.getMonth()+1)+'-'+_ca.getDate()+' '+('0'+_ca.getHours()).slice(-2)+':'+('0'+_ca.getMinutes()).slice(-2):'';
   var _bad=!!window.__cloudStale;
   var _loc=!!window.__cloudLocal;
-  h+='<div class="fp-row"><span class="fp-lab" title="本机账本必须与云端权威流水一致，不一致即为脏账本">云端账本对账</span><span class="fp-val" style="font-size:12px;color:'+(_cn===null?'#c62828':(_bad?'#ef6c00':'#2e7d32'))+';">'+(_cn===null?'未连接':(_cn+' 笔 · '+_ct+(_loc?'（本地账本·云端未同步）':(_bad?'（缓存）':' 已对账'))))+'</span></div>';
+  h+='<div class="fp-row"><span class="fp-lab" title="本机账本必须与云端权威流水一致，不一致即为脏账本">云端账本对账</span><span class="fp-val" style="font-size:12px;color:'+(_cn===null?(window.__pullDone?'#c62828':'#ef6c00'):(_bad?'#ef6c00':'#2e7d32'))+';">'+(_cn===null?(window.__pullDone?'未连接':'同步中…'):(_cn+' 笔 · '+_ct+(_loc?'（本地账本·云端未同步）':(_bad?'（缓存）':' 已对账'))))+'</span></div>';
   el.innerHTML=h; }
 
 // ===== 持仓上报（把「我的持仓」真实数据送到服务端，供收盘自检/周目标用真实口径）=====
@@ -2506,7 +2506,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261124n10';
+  var BUILD='20261124n11';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2530,7 +2530,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261124n10'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261124n11'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
