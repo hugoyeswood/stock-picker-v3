@@ -1,12 +1,12 @@
 {
- "ts": 1795517545758,
+ "ts": 1795517571431,
  "ver": 3,
  "principal": 10000.0,
- "cash": 6182.12,
+ "cash": 5715.75,
  "mv": 3699.0,
- "replay_cash": 6182.12,
- "total": 9881.12,
- "totalPnl": -118.88,
+ "replay_cash": 5715.75,
+ "total": 9414.75,
+ "totalPnl": -585.25,
  "holdings": [
   {
    "code": "sz000725",
