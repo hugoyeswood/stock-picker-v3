@@ -2506,7 +2506,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261124n6';
+  var BUILD='20261124n7';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2530,7 +2530,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261124n6'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261124n7'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -4057,6 +4057,15 @@ setInterval(_stCheck, 1000);
     if(pulling) return; pulling=true;
     var finished=false;
     function finish(){ if(!finished){ finished=true; pulling=false; } }
+    /* n7：ntfy 快照与站内 ledger.json 都拿到时取「笔数多者」，避免旧快照(8笔)覆盖权威流水(20笔) */
+    function cntOf(m){ var n=0; try{ var t=m&&m.d&&m.d.myTrades; if(typeof t==='string') t=JSON.parse(t); n=(t||[]).length; }catch(e){ n=0; } return n; }
+    function finishFromCands(){
+      var c=window.__ntfyCand; window.__ntfyCand=null;
+      if(c){ var _n=cntOf(c), _cur=(typeof window.__cloudCount==='number')?window.__cloudCount:-1;
+        if(_n>_cur){ consumeMaster(c); } }
+      if(typeof window.__cloudCount!=='number'){ useCache(); fallbackLocal(); }
+      finish();
+    }
     function useCache(){
       var c=cachedMaster();
       if(c && (!window.__cloudAt || c.at>window.__cloudAt)){
@@ -4074,7 +4083,7 @@ setInterval(_stCheck, 1000);
           var _sn=0;
           try{ var _st=s.master.d&&s.master.d.myTrades; if(typeof _st==='string') _st=JSON.parse(_st); _sn=(_st||[]).length; }catch(e){ _sn=0; }
           var _ln0=0; try{ _ln0=(getTrades()||[]).length; }catch(e){}
-          if(_sn>=_ln0-2){ consumeMaster(s.master); finish(); return; }
+          if(_sn>=_ln0-2){ window.__ntfyCand=s.master; attemptGH(function(){ finishFromCands(); }); return; }
           window.__staleSnap=_sn;
         }
         /* 无权威快照时，别的设备推的普通快照只做增量；若本地已有权威缓存则不再合入，防止幽灵单回流 */
