@@ -2506,7 +2506,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261124n19';
+  var BUILD='20261124n20';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2530,7 +2530,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261124n19'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261124n20'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -2567,7 +2567,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-24 15:05"></script>
+<script src="./update-check.js" data-page-upd="2026-11-24 15:08"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -3290,13 +3290,16 @@ setInterval(_stCheck, 1000);
   }
   function pullGuardDec(){
     var u='https://raw.githubusercontent.com/hugoyeswood/stock-picker-v3/main/guard_decisions.json?nc='+Date.now();
-    _gFetch(u, 6000).then(function(r){ return r.json(); }).then(function(j){
+    _gFetch(u, 8000).then(function(r){ return r.json(); }).then(function(j){
       if(!j||!j.hold) return;
-      window.__guardDec=j; window.__guardDecAt=Date.now(); renderGuardDec();
+      window.__guardDec=j; window.__guardDecAt=Date.now();
+      try{ renderGuardDec(); }catch(e){}
     }).catch(function(){});
   }
-  setTimeout(pullGuardDec, 2500);
-  setInterval(pullGuardDec, 180000);
+  window.__pullGuardDec=pullGuardDec;
+  window.__renderGuardDec=function(){ try{ renderGuardDec(); }catch(e){} };
+  setTimeout(pullGuardDec, 900);
+  setInterval(pullGuardDec, 90000);
 
   /* ===== 资金安全参数（2026-11-16：每秒计算 + 确认成交 + 确保资金安全）===== */
   var SAFE={ maxHold:5, maxPosRatio:0.95, dayLossStop:0.03, confirmSec:2, staleSec:30, maxFail:3, failCoolMin:5 }; /* n17（2026-11-24 用户"放宽"）：持仓上限 5、仓位上限 75%→95%；单只预算改为"现金按剩余待建只数均分（上限仍 2054、保底1手）"，解决现金 ¥5xxx 建不满 5 只 */
