@@ -1,34 +1,31 @@
 {
-  "ts": 1795503600000,
-  "ver": 3,
-  "principal": 10000,
-  "cash": 5715.75,
-  "mv": 3709.0,
-  "total": 9424.75,
-  "totalPnl": -575.25,
-  "todayPnl": 273.00000000000034,
-  "holdings": [
-    {
-      "code": "sz000725",
-      "name": "京东方Ａ",
-      "qty": 400,
-      "cost": 4.35,
-      "last_price": 4.41,
-      "mv": 1764.0
-    },
-    {
-      "code": "sh600354",
-      "name": "敦煌种业",
-      "qty": 300,
-      "cost": 6.38,
-      "last_price": 6.45,
-      "mv": 1935.0
-    }
-  ],
-  "_source": "ntfy:spv3h-u81058-x7k2m9q",
-  "_pulled_at": "2026-11-24 07:34:05",
-  "_msgs": 6,
-  "updated": "2026-11-24 15:00",
-  "ts_old": 1795493596003,
-  "_note": "ts 已与 updated 对齐（n27 两端同步：页面以 updated/ts 判断云端是否较新）"
+ "ts": 1795517545758,
+ "ver": 3,
+ "principal": 10000.0,
+ "cash": 6182.12,
+ "mv": 3699.0,
+ "replay_cash": 6182.12,
+ "total": 9881.12,
+ "totalPnl": -118.88,
+ "holdings": [
+  {
+   "code": "sz000725",
+   "name": "sz000725",
+   "qty": 400,
+   "cost": 4.362,
+   "last_price": 4.41,
+   "mv": 1764.0
+  },
+  {
+   "code": "sh600354",
+   "name": "sh600354",
+   "qty": 300,
+   "cost": 6.397,
+   "last_price": 6.45,
+   "mv": 1935.0
+  }
+ ],
+ "trades_n": 22,
+ "updated": "2026-11-24 18:52",
+ "_source": "guard_state.replay"
 }
