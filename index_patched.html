@@ -2506,7 +2506,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261124n14';
+  var BUILD='20261124n15';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2530,7 +2530,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261124n14'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261124n15'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -2567,7 +2567,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-24 14:37"></script>
+<script src="./update-check.js" data-page-upd="2026-11-24 14:45"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -3246,7 +3246,7 @@ setInterval(_stCheck, 1000);
   /* 尾盘确认闸（2026-11-23 历史回放结论上线）：当日新建仓，14:45 仍在日内下半区且未盈利，或浮亏≥1.5% → 当日撤出，不等次日 */
   var TAIL_EXIT=true, TAIL_EXIT_HM=1445, TAIL_EXIT_POS=0.40, TAIL_EXIT_LOSS=0.015;
   /* ===== 资金安全参数（2026-11-16：每秒计算 + 确认成交 + 确保资金安全）===== */
-  var SAFE={ maxHold:3, maxPosRatio:0.60, dayLossStop:0.03, confirmSec:2, staleSec:30, maxFail:3, failCoolMin:5 };
+  var SAFE={ maxHold:5, maxPosRatio:0.75, dayLossStop:0.03, confirmSec:2, staleSec:30, maxFail:3, failCoolMin:5 }; /* n15（2026-11-24 定稿）：持仓上限 3→5、仓位上限 60%→75%，与"每日 5 只"名单对齐；现金/凯利 2054 仍是硬约束 */
   var _sigQ={}, _failN=0, _failAt=0;
   function pad(n){ return (n<10?'0':'')+n; }
   function dayStr(d){ d=d||new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
