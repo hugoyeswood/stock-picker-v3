@@ -2506,7 +2506,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261124n12';
+  var BUILD='20261124n13';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2530,7 +2530,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261124n12'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261124n13'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -2567,7 +2567,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-24 13:33"></script>
+<script src="./update-check.js" data-page-upd="2026-11-24 14:30"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -3615,6 +3615,11 @@ setInterval(_stCheck, 1000);
     }
 
     /* --- 买入：候选 = 推荐 5 只 + 战法 grade2 --- */
+    /* n13 补丁（2026-11-24）：账本未就绪时整段跳过，不调 autoBuy。
+       原来 autoBuy 内部 `if(!window.__pullDone) return false` 是本轮静默失败，
+       会被外层 _failN++ 计入「连续失败」，3 次即触发 5 分钟冷却，
+       页面刚打开那几秒就把自动买入口封死（13:00 后那次空仓即此因）。 */
+    if(!window.__pullDone || !window.__cloudHold || (Date.now()-(window.__cloudAt||0))>10*60*1000) return;
     var cands=getCands();
     var night=(hm>=1415) ? (window.__nightPool||[]) : [];
     /* 战法时段多给 1 个隔夜专用位（仓位 60% 门仍兜底，不会因放宽而超买） */
@@ -4057,6 +4062,33 @@ setInterval(_stCheck, 1000);
     if(pulling) return; pulling=true;
     var finished=false;
     function finish(){ if(!finished){ finished=true; pulling=false; } }
+    /* n13 补丁（2026-11-24）：ntfy 在部分网络下会挂到 30s+ 才超时，把整条兜底链拖住，
+       表现就是新设备首屏「交易记录 空白 / 资金面板 ¥10000 / __pullDone 迟迟不真」。
+       ① 所有外部 fetch 加硬超时；② 并行直读 raw ledger.json 做快路径（约 0.5s）。 */
+    function fetchT(url, ms, opts){
+      return new Promise(function(res,rej){
+        var ctl=null,to=null;
+        try{ ctl=new AbortController(); to=setTimeout(function(){ try{ ctl.abort(); }catch(e){} rej(new Error('timeout')); }, ms||8000); }catch(e){}
+        var o=opts||{}; if(ctl) o.signal=ctl.signal;
+        fetch(url,o).then(function(r){ if(to)clearTimeout(to); res(r); }, function(e){ if(to)clearTimeout(to); rej(e); });
+      });
+    }
+    function quickGH(){
+      if(typeof window.__cloudCount==='number') return;
+      var u='https://raw.githubusercontent.com/hugoyeswood/stock-picker-v3/main/ledger.json?nc='+Date.now();
+      fetchT(u, 6000, {cache:'no-store'}).then(function(r){ if(!r.ok) throw new Error('http'+r.status); return r.text(); })
+        .then(function(t){
+          var m=null; try{ m=JSON.parse(t); }catch(e){}
+          if(!m||!m.d||!m.at) return;
+          var _in=0; try{ var _t2=m.d.myTrades; if(typeof _t2==='string') _t2=JSON.parse(_t2); _in=(_t2||[]).length; }catch(e){ _in=0; }
+          var _cur=(typeof window.__cloudCount==='number')?window.__cloudCount:-1;
+          if(_in>_cur){
+            consumeMaster(m); window.__pullDone=true;
+            setBar('已拉取云端账本 '+_in+' 笔',true);
+            try{ if(window.__planBoard&&window.__planBoard.log) window.__planBoard.log(); }catch(e){}
+          }
+        }).catch(function(){});
+    }
     /* n7：ntfy 快照与站内 ledger.json 都拿到时取「笔数多者」，避免旧快照(8笔)覆盖权威流水(20笔) */
     function cntOf(m){ var n=0; try{ var t=m&&m.d&&m.d.myTrades; if(typeof t==='string') t=JSON.parse(t); n=(t||[]).length; }catch(e){ n=0; } return n; }
     function finishFromCands(){
@@ -4075,7 +4107,7 @@ setInterval(_stCheck, 1000);
       }
     }
     function attempt(since, onEmpty){
-      fetch(TOPIC+'/json?poll=1&since='+since).then(function(r){ return r.text(); }).then(function(t){
+      fetchT(TOPIC+'/json?poll=1&since='+since, 8000).then(function(r){ return r.text(); }).then(function(t){
         var s=parseSnaps(t);
         /* n6 补丁：先验笔数。低于本机账本 2 笔以上的快照视为旧快照回流（08~09 点那批 8 笔幽灵账），
            不采用、不覆盖，直接走 24h → GitHub 权威账本，避免可用资金/持仓被旧账本改写。 */
@@ -4104,7 +4136,7 @@ setInterval(_stCheck, 1000);
       ];
       function tryOne(i){
         if(i>=_cands.length){ onDone(); return; }
-        fetch(_cands[i],{cache:'no-store'}).then(function(r){
+        fetchT(_cands[i], 6000, {cache:'no-store'}).then(function(r){
           if(!r.ok){ throw new Error('http '+r.status); }
           return r.text();
         }).then(function(t){
@@ -4140,11 +4172,24 @@ setInterval(_stCheck, 1000);
       var n=0, at=0;
       try{ (getTrades()||[]).forEach(function(t){ n++; var k=_tKey(t); if(k>at) at=k; }); }catch(e){}
       if(n>0){
-        window.__cloudCount=n; window.__cloudAt=at||Date.now();
+        /* n13 补丁（2026-11-24）：原来只置 __pullDone 不置 __cloudHold，
+           autoBuy/autoSell 的「云端账本确认」闸门照样拦死 → 兜底等于假放行。
+           这里按本机流水重放在手股数，__cloudAt 取当前时间（用交易时间会被 10 分钟闸门判旧）。 */
+        var _pos={};
+        try{
+          (getTrades()||[]).forEach(function(t){
+            if(!t||!t.code) return;
+            var q=+t.qty||0; _pos[t.code]=_pos[t.code]||0;
+            var _s=(t.type==='sell')||(t.type===undefined&&t.auto&&t.reason);
+            if(_s) _pos[t.code]=Math.max(0,_pos[t.code]-q); else _pos[t.code]+=q;
+          });
+        }catch(e){}
+        window.__cloudHold=_pos; window.__cloudCount=n; window.__cloudAt=Date.now();
         window.__cloudStale=true; window.__cloudLocal=true; window.__pullDone=true;
         setBar('云端不可达 · 用本机账本 '+n+' 笔自洽校验（自动买卖已放行）',false);
       }
     }
+    quickGH();
     attempt('6h', function(){ attempt('24h', function(){ attemptGH(function(){ useCache(); fallbackLocal(); }); }); });
   }
   // 拦截本地写入 → 触发上行
