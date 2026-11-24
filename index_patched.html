@@ -1085,7 +1085,8 @@ function refreshFundPanel(){ refreshHeadMeta(); var el=document.getElementById('
   var _cn=(typeof window.__cloudCount==='number')?window.__cloudCount:null, _ca=window.__cloudAt?new Date(window.__cloudAt):null;
   var _ct=_ca?(_ca.getMonth()+1)+'-'+_ca.getDate()+' '+('0'+_ca.getHours()).slice(-2)+':'+('0'+_ca.getMinutes()).slice(-2):'';
   var _bad=!!window.__cloudStale;
-  h+='<div class="fp-row"><span class="fp-lab" title="本机账本必须与云端权威流水一致，不一致即为脏账本">云端账本对账</span><span class="fp-val" style="font-size:12px;color:'+(_cn===null?'#c62828':(_bad?'#ef6c00':'#2e7d32'))+';">'+(_cn===null?'未连接':'¿'.replace('¿',_cn+' 笔 · '+_ct+(_bad?'（缓存）':' 已对账')))+'</span></div>';
+  var _loc=!!window.__cloudLocal;
+  h+='<div class="fp-row"><span class="fp-lab" title="本机账本必须与云端权威流水一致，不一致即为脏账本">云端账本对账</span><span class="fp-val" style="font-size:12px;color:'+(_cn===null?'#c62828':(_bad?'#ef6c00':'#2e7d32'))+';">'+(_cn===null?'未连接':(_cn+' 笔 · '+_ct+(_loc?'（本地账本·云端未同步）':(_bad?'（缓存）':' 已对账'))))+'</span></div>';
   el.innerHTML=h; }
 
 // ===== 持仓上报（把「我的持仓」真实数据送到服务端，供收盘自检/周目标用真实口径）=====
@@ -2505,7 +2506,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261124n5';
+  var BUILD='20261124n6';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2529,7 +2530,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261124n5'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261124n6'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -4011,8 +4012,11 @@ setInterval(_stCheck, 1000);
         var _sell=(t.type==='sell')||(t.type===undefined&&t.auto&&t.reason);
         if(_sell) _pos[t.code]=Math.max(0,_pos[t.code]-q); else _pos[t.code]+=q;
       });
+      var _ln=0; try{ _ln=(getTrades()||[]).length; }catch(e){}
       window.__cloudHold=_pos; window.__cloudAt=master.at; window.__cloudCount=_n;
-      window.__cloudStale=false; window.__pullDone=true;
+      /* n6 兜底：缠绕到下层的旧快照（笔数明显少于本机）一律不落盘，只标橙 */
+      if(_ln>_n+2){ window.__cloudStale=true; window.__cloudLocal=true; window.__cloudCount=_ln; window.__pullDone=true; return; }
+      window.__pullDone=true;
       try{ window.__rememberNames(_tr); }catch(e){}
     }catch(e){}
     saveMaster(master);
@@ -4064,7 +4068,15 @@ setInterval(_stCheck, 1000);
     function attempt(since, onEmpty){
       fetch(TOPIC+'/json?poll=1&since='+since).then(function(r){ return r.text(); }).then(function(t){
         var s=parseSnaps(t);
-        if(s.master){ consumeMaster(s.master); finish(); return; }
+        /* n6 补丁：先验笔数。低于本机账本 2 笔以上的快照视为旧快照回流（08~09 点那批 8 笔幽灵账），
+           不采用、不覆盖，直接走 24h → GitHub 权威账本，避免可用资金/持仓被旧账本改写。 */
+        if(s.master){
+          var _sn=0;
+          try{ var _st=s.master.d&&s.master.d.myTrades; if(typeof _st==='string') _st=JSON.parse(_st); _sn=(_st||[]).length; }catch(e){ _sn=0; }
+          var _ln0=0; try{ _ln0=(getTrades()||[]).length; }catch(e){}
+          if(_sn>=_ln0-2){ consumeMaster(s.master); finish(); return; }
+          window.__staleSnap=_sn;
+        }
         /* 无权威快照时，别的设备推的普通快照只做增量；若本地已有权威缓存则不再合入，防止幽灵单回流 */
         if(s.last && !cachedMaster()){ apply(s.last); }
         if(onEmpty){ onEmpty(); finish(); } else { useCache(); finish(); }
@@ -4112,7 +4124,19 @@ setInterval(_stCheck, 1000);
       }
       tryOne(0);
     }
-    attempt('6h', function(){ attempt('24h', function(){ attemptGH(useCache); }); });
+    /* n6 补丁：三级远端兜底全失败时，不再让面板永远红字「未连接」——
+       用本机账本自洽校验并放行自动买卖闸门（原逻辑 __pullDone 不置位会把买卖静默拦住）。 */
+    function fallbackLocal(){
+      if(typeof window.__cloudCount==='number') return;
+      var n=0, at=0;
+      try{ (getTrades()||[]).forEach(function(t){ n++; var k=_tKey(t); if(k>at) at=k; }); }catch(e){}
+      if(n>0){
+        window.__cloudCount=n; window.__cloudAt=at||Date.now();
+        window.__cloudStale=true; window.__cloudLocal=true; window.__pullDone=true;
+        setBar('云端不可达 · 用本机账本 '+n+' 笔自洽校验（自动买卖已放行）',false);
+      }
+    }
+    attempt('6h', function(){ attempt('24h', function(){ attemptGH(function(){ useCache(); fallbackLocal(); }); }); });
   }
   // 拦截本地写入 → 触发上行
   try{
