@@ -1878,6 +1878,20 @@ window.__holdTimer = setInterval(holdTimer, 2000); // 报价跟随
 setInterval(function(){ refreshHoldings(); refreshFundPanel(); updatePnL(); }, 5000); // n13：持仓/资金面板 5 秒跟随行情（原 60 秒会让总资产长时间只显示现金、市值 0）
 setTimeout(holdTimer, 500);  // 页面加载后先刷一次
 // ===== 今日短线推荐目录：每15分钟fetch最新JSON重渲染（确保可买+短线高增长） =====
+/* n24：动态渲染卡片也带预算实买股数（与 autoBuy 的 dynCap 同源），修"建议3手/实买2手"口径打架 */
+function _qtyHintInline(s){
+  try{
+    var cap=(window.__dynCap?window.__dynCap():0);
+    var p=parseFloat((s&&(s.price||s.now))||0);
+    if(!(cap>0)||!(p>0)) return '';
+    var q=Math.floor(cap/p/100)*100;
+    var cash=0;
+    try{ var f=calcFund(); cash=(f&&f.cash)||0; }catch(e){}
+    if(q<100 && cash>=p*100*1.002) q=100;
+    if(q<100) return '　<b style="color:#ef6c00;font-size:12px;">预算不足，今日不建</b>';
+    return '　<b style="color:#00695c;font-size:12px;">预算约 ¥'+Math.round(cap)+' → 实买 '+q+' 股</b>';
+  }catch(e){ return ''; }
+}
 function escHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function hasHolding(code){
   var q=0;
@@ -2136,7 +2150,7 @@ function renderShortTerm(j){
       '<span class="st-price price" data-code="'+escHtml(s.code)+'" style="color:'+scol+';">'+priceTxt+'</span> '+
       '<span class="st-chg chg" data-code="'+escHtml(s.code)+'">'+chgTxt+'</span></div>'+
       '<div class="st-reason">✅ 可买理由：'+escHtml(s.reason||'--')+'</div>'+
-      '<div class="st-qty">📌 建议买入股数：<b style="color:#c62828;">'+escHtml(s.qty||'--')+'</b></div>'+
+      '<div class="st-qty">📌 建议买入股数：<b style="color:#c62828;">'+escHtml(s.qty||'--')+'</b>'+_qtyHintInline(s)+'</div>'+
       '<div class="st-math" style="font-size:12px;color:#6d4c41;background:#fff8e1;border-radius:6px;padding:5px 8px;margin:5px 0;">⚖️ 江恩位置 <b>'+gannTxt(s.gann_pos)+'</b> · 波浪 <b>'+waveTxt(s.wave)+'</b> · 全凯利上限 <b>¥'+(s.kelly_cap?Math.round(s.kelly_cap):'--')+'</b></div>'+
       (s.tailpos!=null?'<div class="st-gene" style="font-size:12px;color:#4527a0;background:#f3e5f5;border-radius:6px;padding:5px 8px;margin:5px 0;">🌙 隔夜基因：尾盘位置 <b>'+Number(s.tailpos).toFixed(2)+'</b>（≥0.6=尾盘承接强）｜近20日涨停：<b>'+(s.gene?'有':'无')+'</b> · 只做选股参考，不做"次日开盘无条件清仓"</div>':'')+'<div class="st-line">📈 涨值巅峰线：<b style="color:#2e7d32;">'+escHtml(s.take_profit||'--')+'元</b> · 🛡 止损线：<b style="color:#c62828;">'+escHtml(s.stop_loss||'--')+'元</b></div>'+
       '<div class="st-ref">买入区间 <b>'+escHtml(s.buy_range||'--')+'</b> · 止损 <b>'+escHtml(s.stop_loss||'--')+'</b> · 止盈 <b>'+escHtml(s.take_profit||'--')+'</b></div>'+
@@ -2506,7 +2520,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261124n23';
+  var BUILD='20261124n24';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2530,7 +2544,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261124n23'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261124n24'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -2567,7 +2581,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-24 16:48"></script>
+<script src="./update-check.js" data-page-upd="2026-11-24 16:43"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
