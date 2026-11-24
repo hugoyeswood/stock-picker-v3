@@ -2506,7 +2506,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261124n18';
+  var BUILD='20261124n19';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2530,7 +2530,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261124n18'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261124n19'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -2567,7 +2567,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-24 15:22"></script>
+<script src="./update-check.js" data-page-upd="2026-11-24 15:05"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -3734,7 +3734,13 @@ setInterval(_stCheck, 1000);
       } else {
         if(p>c.entry*1.0 || p<c.entry*0.97) return;     // 推荐票：只在买区内成交
       }
-      var qty=Math.floor((window.__dynCap?window.__dynCap():KELLY_CAP)/p/100)*100;
+      var _cap=(window.__dynCap?window.__dynCap():KELLY_CAP);
+      var qty=Math.floor(_cap/p/100)*100;
+      /* n19：均分后不足 1 手时，只要现金够就保底 1 手（100 股成本仍远低于单只上限 2054），
+         否则 ¥5xxx 现金均分后，11.7 元的同兴达会连 1 手都建不了，5 只名单照样落不了地 */
+      if(qty<100){
+        try{ var _cf=calcFund(); if(_cf && _cf.cash>0 && _cf.cash >= p*100*1.002) qty=100; }catch(e){}
+      }
       if(qty<100) qty=0;
       if(!qty) return;
       var err=safetyGate(p,qty,maxH);
