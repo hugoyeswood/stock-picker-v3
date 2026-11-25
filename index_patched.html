@@ -2015,6 +2015,7 @@ setTimeout(holdTimer, 500);  // 页面加载后先刷一次
 /* n24：动态渲染卡片也带预算实买股数（与 autoBuy 的 dynCap 同源），修"建议3手/实买2手"口径打架 */
 function _qtyHintInline(s){
   try{
+    if(!s || /已持仓/.test(String(s.qty||''))) return '';   /* 持仓票不追加预算提示（2026-11-25 修） */
     var cap=(window.__dynCap?window.__dynCap():0);
     var p=parseFloat((s&&(s.price||s.now))||0);
     if(!(cap>0)||!(p>0)) return '';
@@ -2658,7 +2659,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261125o';
+  var BUILD='20261125p';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2682,7 +2683,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261125o'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261125p'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -3384,6 +3385,119 @@ setInterval(_stCheck, 1000);
       n=n.parentNode;
     }
   }, false);
+
+  /* ===== 卡片内迷你日K（2026-11-25 用户需求：持仓产品直接看到K线版） =====
+     数据来自同源静态 kline.json（tools/gen_kline.py 生成），不跨域；
+     day 周期取最近 30 根，叠加 MA5 橙色折线与成本线（蓝色虚线）。 */
+  var MINI_N = 30;
+
+  function miniWrapOf(card){
+    if(!card || !card.querySelector) return null;
+    return card.querySelector('.kl-mini-wrap');
+  }
+
+  function drawMini(card){
+    var wrap = miniWrapOf(card); if(!wrap) return;
+    var cv = wrap.querySelector('canvas'); if(!cv) return;
+    var code = card.getAttribute('data-klcode') || '';
+    var bars = (cache && cache.data && cache.data[code] && cache.data[code].day) || [];
+    var W = Math.max(150, Math.floor((wrap.clientWidth || 200) - 14));
+    var H = 88, dpr = window.devicePixelRatio || 1;
+    cv.width = Math.floor(W * dpr); cv.height = Math.floor(H * dpr); cv.style.height = H + 'px';
+    var ctx = cv.getContext('2d'); if(!ctx) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    var lab = wrap.querySelector('.kl-mini-last');
+    if(!bars.length){
+      ctx.fillStyle = '#9aa4ae'; ctx.font = '11px sans-serif'; ctx.fillText('日K数据加载中…', 6, H / 2);
+      if(lab) lab.textContent = '';
+      return;
+    }
+    bars = bars.slice(-MINI_N);
+    var lo = Infinity, hi = -Infinity, entry = parseFloat(card.getAttribute('data-entry')) || 0, i, b;
+    for(i = 0; i < bars.length; i++){ if(bars[i][3] < lo) lo = bars[i][3]; if(bars[i][4] > hi) hi = bars[i][4]; }
+    if(entry > 0){ if(entry < lo) lo = entry; if(entry > hi) hi = entry; }
+    var span = (hi - lo) || 0.01, pad = span * 0.03; lo -= pad; hi += pad; span = hi - lo;
+    var padL = 2, padR = 2, top = 5, bottom = 5, plotH = H - top - bottom, plotW = W - padL - padR;
+    function y(v){ return top + plotH - (v - lo) / span * plotH; }
+    var gap = plotW / bars.length, bw = Math.max(1.1, gap * 0.62);
+    for(i = 0; i < bars.length; i++){
+      b = bars[i];
+      var up = (b[2] >= b[1]), col = up ? '#d32f2f' : '#2e7d32';
+      var x = padL + i * gap + gap / 2;
+      ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, y(b[4])); ctx.lineTo(x, y(b[3])); ctx.stroke();
+      var yo = y(Math.max(b[1], b[2])), yc = y(Math.min(b[1], b[2])), hh = Math.max(1.2, yc - yo);
+      if(up){ ctx.strokeRect(x - bw / 2, yo, bw, hh); } else { ctx.fillRect(x - bw / 2, yo, bw, hh); }
+    }
+    /* MA5 */
+    ctx.strokeStyle = '#ef6c00'; ctx.lineWidth = 1.3; ctx.beginPath();
+    var started = false;
+    for(i = 4; i < bars.length; i++){
+      var s = 0; for(var k = i - 4; k <= i; k++){ s += bars[k][2]; }
+      var mx = padL + i * gap + gap / 2, my = y(s / 5);
+      if(!started){ ctx.moveTo(mx, my); started = true; } else { ctx.lineTo(mx, my); }
+    }
+    ctx.stroke();
+    /* 成本线 */
+    if(entry > 0){
+      ctx.setLineDash([3, 3]); ctx.strokeStyle = '#1565c0'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(padL, y(entry)); ctx.lineTo(W - padR, y(entry)); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    var last = bars[bars.length - 1];
+    if(lab){
+      var chgv = last[2] - last[1];
+      lab.style.color = chgv >= 0 ? '#d32f2f' : '#2e7d32';
+      lab.textContent = '收 ' + last[2].toFixed(2) + ' (' + (chgv >= 0 ? '+' : '') + (chgv / (last[1] || 1) * 100).toFixed(2) + '%)';
+    }
+  }
+
+  function ensureMini(card){
+    if(!card || !card.querySelector || miniWrapOf(card)) return;
+    var code = card.getAttribute('data-klcode');
+    if(!code){
+      var btn = card.querySelector('button[data-kl="1"]');
+      if(btn) code = btn.getAttribute('data-code');
+    }
+    if(!code) return;
+    card.setAttribute('data-klcode', code);
+    var wrap = document.createElement('div');
+    wrap.className = 'kl-mini-wrap';
+    wrap.setAttribute('data-k', code);
+    wrap.style.cssText = 'margin:6px 0 2px;padding:5px 7px 3px;background:#fbfbfc;border:1px solid #e8ebef;border-radius:9px;';
+    wrap.innerHTML = "<div style='display:flex;align-items:center;gap:8px;font-size:11px;color:#5c6b7a;'>"
+      + "<span>📊 近" + MINI_N + "日K</span>"
+      + "<span style='color:#ef6c00;'>MA5</span>"
+      + "<span style='color:#1565c0;'>成本</span>"
+      + "<b class='kl-mini-last' style='margin-left:auto;font-weight:600;'></b></div>"
+      + "<canvas style='width:100%;height:88px;display:block;'></canvas>";
+    var ref = card.querySelector('.st-ref');
+    if(ref && ref.parentNode){ ref.parentNode.insertBefore(wrap, ref.nextSibling); }
+    else {
+      var ops = card.querySelector('.st-ops');
+      if(ops && ops.parentNode){ ops.parentNode.insertBefore(wrap, ops); } else { card.appendChild(wrap); }
+    }
+    loadJson(function(){ drawMini(card); });
+  }
+
+  function syncMiniAll(){
+    var items = document.querySelectorAll('#stRecContainer .st-item');
+    for(var i = 0; i < items.length; i++){ try{ ensureMini(items[i]); }catch(e){} }
+  }
+
+  try{
+    var _miniHost = document.getElementById('stRecContainer');
+    if(_miniHost && window.MutationObserver){
+      new MutationObserver(function(){ setTimeout(syncMiniAll, 0); }).observe(_miniHost, {childList:true});
+    }
+  }catch(e){}
+  setTimeout(syncMiniAll, 400);
+  setTimeout(syncMiniAll, 2500);
+  setTimeout(syncMiniAll, 6000);
+  window.addEventListener('resize', function(){
+    var w = document.querySelectorAll('#stRecContainer .st-item');
+    for(var i = 0; i < w.length; i++){ try{ drawMini(w[i]); }catch(e){} }
+  });
 })();
 </script>
 <script>
