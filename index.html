@@ -2659,7 +2659,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261125q';
+  var BUILD='20261125r';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2683,7 +2683,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261125q'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261125r'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -3257,7 +3257,9 @@ setInterval(_stCheck, 1000);
       var q=pending; pending=[];
       for(var i=0;i<q.length;i++){ try{ q[i](j); }catch(e){} }
     }).catch(function(){
-      loading=false; pending=[];
+      loading=false; var q=pending; pending=[];
+      /* 首次冷启/CDN 抖动：3 秒后自动重拉，别让卡片空在那里 */
+      setTimeout(function(){ try{ loadJson(function(){ for(var i=0;i<q.length;i++){ try{ q[i](cache||{}); }catch(e){} } }); }catch(e){} }, 3000);
     });
   }
 
@@ -3410,8 +3412,10 @@ setInterval(_stCheck, 1000);
     if(!bars.length){
       ctx.fillStyle = '#9aa4ae'; ctx.font = '11px sans-serif'; ctx.fillText('日K数据加载中…', 6, H / 2);
       if(lab) lab.textContent = '';
+      if(!wrap.__klRetry){ wrap.__klRetry = 1; setTimeout(function(){ try{ loadJson(function(){ drawMini(card); }); }catch(e){} }, 4000); }
       return;
     }
+    wrap.__klRetry = 0;
     bars = bars.slice(-MINI_N);
     var lo = Infinity, hi = -Infinity, entry = parseFloat(card.getAttribute('data-entry')) || 0, i, b;
     for(i = 0; i < bars.length; i++){ if(bars[i][3] < lo) lo = bars[i][3]; if(bars[i][4] > hi) hi = bars[i][4]; }
@@ -3458,6 +3462,10 @@ setInterval(_stCheck, 1000);
     if(!code){
       var btn = card.querySelector('button[data-kl="1"]');
       if(btn) code = btn.getAttribute('data-code');
+    }
+    if(!code){
+      var pc = card.querySelector('.st-price[data-code], .price[data-code]');
+      if(pc) code = pc.getAttribute('data-code');
     }
     if(!code) return;
     card.setAttribute('data-klcode', code);
