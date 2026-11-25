@@ -2154,7 +2154,7 @@ function analyzeStock(code, opt){
   else { v='⛔ 暂不买入'; col='#2e7d32'; pos='风险大于机会，回避为主'; }
   var _tag='';
   if(opt && opt.held){ v='✅ 持仓持有中（未触发卖出）'; col='#2e7d32'; pos='持仓中：跌破5日线且日内转负即卖出，否则继续持有等止盈';
-    if(opt.cost>0 && p>0){ var _pn=(p/opt.cost-1)*100; _tag='浮盈 '+(_pn>=0?'+':'')+_pn.toFixed(2)+'%'; } }
+    if(opt.cost>0 && p>0){ var _pn=(p/opt.cost-1)*100; _tag=(_pn>=0?'浮盈 +':'浮亏 ')+Math.abs(_pn).toFixed(2)+'%'; } }
   return { score:score, verdict:v, color:col, reasons:rs, risks:rk, position:pos, rr:rr, p:p, tag:_tag };
 }
 function adviceBoxHtml(a){
@@ -2658,7 +2658,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261125n';
+  var BUILD='20261125o';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2682,7 +2682,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261125n'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261125o'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -2719,7 +2719,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-25 11:32"></script>
+<script src="./update-check.js" data-page-upd="2026-11-25 11:33"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
@@ -3497,7 +3497,8 @@ setInterval(_stCheck, 1000);
         var box=it.querySelector('.st-qty');
         if(!box) continue;
         if(!box.getAttribute('data-base')){ var _clean=box.innerHTML.replace(/　<b style="color:(#00695c|#ef6c00);font-size:12px;">[^<]*<\/b>/g,''); box.setAttribute('data-base',_clean); }
-        var extra = q>=100
+        var _heldQ=/已持仓/.test(box.getAttribute('data-base')||'');
+        var extra = _heldQ ? '' : q>=100
           ? '　<b style="color:#00695c;font-size:12px;">预算约 ¥'+Math.round(cap)+' → 实买 '+q+' 股</b>'
           : '　<b style="color:#ef6c00;font-size:12px;">预算不足，今日不建</b>';
         box.innerHTML = box.getAttribute('data-base') + extra;
