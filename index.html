@@ -2301,7 +2301,9 @@ function renderShortTerm(j){
     var p=parseFloat(s.price), chg=parseFloat(s.chg);
     var up=chg>=0, scol=up?'#c62828':'#2e7d32';
     var canBuy=!isNaN(p)&&p*100<=budget;
-    var _held=String(s.qty||'').indexOf('已持仓')>=0;var badge=_held?'<span class="st-badge">✓ 持仓中</span>':(canBuy?'<span class="st-badge">✓ 可买</span>':'<span class="st-badge" style="background:#ef6c00;">⚠️ 资金不足</span>');
+    var _held=String(s.qty||'').indexOf('已持仓')>=0;
+    var _gateBlocked=(s.gate_ok===0);
+    var badge=_held?'<span class="st-badge">✓ 持仓中</span>':(_gateBlocked?'<span class="st-badge" style="background:#c62828;">⛔ 闸门未过·禁建仓</span>':(canBuy?'<span class="st-badge">✓ 可买</span>':'<span class="st-badge" style="background:#ef6c00;">⚠️ 资金不足</span>'));
     var priceTxt=isNaN(p)?'--':'¥'+p.toFixed(2);
     var chgTxt=isNaN(chg)?'--':((up?'+':'')+chg.toFixed(2)+'%');
     var held=hasHolding(s.code);
@@ -2317,10 +2319,11 @@ function renderShortTerm(j){
       '<div class="st-math" style="font-size:12px;color:#6d4c41;background:#fff8e1;border-radius:6px;padding:5px 8px;margin:5px 0;">⚖️ 江恩位置 <b>'+gannTxt(s.gann_pos)+'</b> · 波浪 <b>'+waveTxt(s.wave)+'</b> · 全凯利上限 <b>¥'+(s.kelly_cap?Math.round(s.kelly_cap):'--')+'</b></div>'+
       (s.tailpos!=null?'<div class="st-gene" style="font-size:12px;color:#4527a0;background:#f3e5f5;border-radius:6px;padding:5px 8px;margin:5px 0;">🌙 隔夜基因：尾盘位置 <b>'+Number(s.tailpos).toFixed(2)+'</b>（≥0.6=尾盘承接强）｜近20日涨停：<b>'+(s.gene?'有':'无')+'</b> · 只做选股参考，不做"次日开盘无条件清仓"</div>':'')+'<div class="st-line">📈 涨值巅峰线：<b style="color:#2e7d32;">'+escHtml(s.take_profit||'--')+'元</b> · 🛡 止损线：<b style="color:#c62828;">'+escHtml(s.stop_loss||'--')+'元</b></div>'+
       '<div class="st-ref">买入区间 <b>'+escHtml(s.buy_range||'--')+'</b> · 止损 <b>'+escHtml(s.stop_loss||'--')+'</b> · 止盈 <b>'+escHtml(s.take_profit||'--')+'</b></div>'+
+      (_gateBlocked?'<div style="font-size:12px;color:#b71c1c;background:#ffebee;border:1px solid #ef9a9a;border-radius:6px;padding:5px 8px;margin:5px 0;">⛔ 买前闸门未过，不建仓：'+escHtml(s.gate_why||'60日位置/上冲频率越界')+'（位置'+(s.gate_pos!=null?Number(s.gate_pos).toFixed(3):'--')+'，次日上冲'+(s.gate_touch!=null?Math.round(Number(s.gate_touch)*100)+'%':'--')+'）</div>':'')+
       '<div class="st-advice" data-code="'+escHtml(s.code)+'" data-tp="'+escHtml(s.take_profit||'0')+'" data-sl="'+escHtml(s.stop_loss||'0')+'"></div>'+
       '<div class="st-warn" data-stwarn="'+escHtml(s.code)+'" data-tp="'+escHtml(s.take_profit||'0')+'" data-sl="'+escHtml(s.stop_loss||'0')+'" data-tp0="'+escHtml(s.take_profit||'0')+'" data-sl0="'+escHtml(s.stop_loss||'0')+'"></div>'+
       '<div class="st-ops">'+
-      '<button class="st-buy" data-stbuy="1" data-code="'+escHtml(s.code)+'" data-name="'+escHtml(s.name)+'" data-price="'+(isNaN(p)?'0':p)+'" '+(held?'style="opacity:0.5;" title="'+(window.__isBL&&window.__isBL(s.code)?'已在黑名单，只许减不许加':'已持有，可加仓')+'"':'')+'>'+((held&&window.__isBL&&window.__isBL(s.code))?'⛔ 已拉黑·只减不加':(held?'➕ 已持有·加仓':'📥 买入'))+'</button><button class="st-buy" style="background:#1565c0;" data-kl="1" data-code="'+escHtml(s.code)+'" data-name="'+escHtml(s.name)+'">📈 K线</button>'+
+      '<button class="st-buy" data-stbuy="1" data-code="'+escHtml(s.code)+'" data-name="'+escHtml(s.name)+'" data-price="'+(isNaN(p)?'0':p)+'" '+(held?'style="opacity:0.5;" title="'+(window.__isBL&&window.__isBL(s.code)?'已在黑名单，只许减不许加':'已持有，可加仓')+'"':(_gateBlocked?'disabled style="background:#9e9e9e;opacity:0.6;" title="闸门未过，禁止建仓"':''))+'>'+((held&&window.__isBL&&window.__isBL(s.code))?'⛔ 已拉黑·只减不加':(held?'➕ 已持有·加仓':(_gateBlocked?'⛔ 闸门未过':'📥 买入')))+'</button><button class="st-buy" style="background:#1565c0;" data-kl="1" data-code="'+escHtml(s.code)+'" data-name="'+escHtml(s.name)+'">📈 K线</button>'+
       (held?'<button class="st-sell" data-stsell="1" data-code="'+escHtml(s.code)+'">💰 卖出</button>':'')+
       '</div></div>';
   });
@@ -2685,7 +2688,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261125y';
+  var BUILD='20261125z';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2709,7 +2712,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261125y'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261125z'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
