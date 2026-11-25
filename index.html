@@ -1659,7 +1659,31 @@ function buildAdvice(price,chg,outer,inner,avg,volRatio,turnover,limitUp,limitDo
 
 // ===== 我的持仓：实时跟进 + 止盈线 + 止损线 + 跌近峰值预警 =====
 function loadHS(){ try{ return JSON.parse(localStorage.getItem('myHS')||'{}'); }catch(e){ return {}; } }
-function saveHS(o){ localStorage.setItem('myHS', JSON.stringify(o)); }
+function saveHS(o){ localStorage.setItem('myHS', JSON.stringify(o)); try{ _pushHoldStops(o); }catch(e){} }
+/* 止损设置同步（2026-11-25）：页面把 myHS 推到 ntfy 专用 topic，云端执行器 exec_sell 读同一份，
+   解决"页面自定义止损线改了、后端还用成本×0.95"的口径分裂 */
+var STOP_TOPIC='https://ntfy.sh/spv3stops-u81058-x7k2m9q-5c8e1f3a';
+function _pushHoldStops(o){
+  try{
+    var s=JSON.stringify({t:'hs',at:new Date().toISOString(),hs:o});
+    if(s.length>3800) return;
+    fetch(STOP_TOPIC,{method:'POST',headers:{'Content-Type':'text/plain'},body:s}).catch(function(){});
+  }catch(e){}
+}
+function _pullHoldStops(){
+  try{
+    fetch(STOP_TOPIC+'/json?poll=1&since=12h').then(function(r){return r.text();}).then(function(txt){
+      var last=null, lines=String(txt||'').split('\n');
+      for(var i=0;i<lines.length;i++){
+        try{ var m=JSON.parse(lines[i]); if(m&&m.message){ var d=JSON.parse(m.message); if(d&&d.hs) last=d.hs; } }catch(e){}
+      }
+      if(!last) return;
+      var cur=loadHS();
+      for(var k in last){ if(last[k]&&(last[k].sl||last[k].tp)){ if(!cur[k]||!(cur[k].sl||cur[k].tp)) cur[k]=last[k]; } }
+      localStorage.setItem('myHS', JSON.stringify(cur));
+    }).catch(function(){});
+  }catch(e){}
+}
 function loadAlerts(){ try{ return JSON.parse(localStorage.getItem('myAlerts')||'{}'); }catch(e){ return {}; } }
 function saveAlerts(o){ localStorage.setItem('myAlerts', JSON.stringify(o)); }
 
@@ -1900,7 +1924,7 @@ function monitorAlerts(){
 }
 function fireAlert(hits){
   var bar=document.getElementById('alertBar');
-  var msg=hits.map(function(x){ return x.name+' 现价¥'+x.price.toFixed(2)+' 已逼近止损线¥'+x.sl.toFixed(2)+'（距止损2%内）'; }).join('；');
+  var msg=hits.map(function(x){ return x.name+' 现价¥'+x.price.toFixed(2)+' '+(x.price<=x.sl?'已跌破止损线¥'+x.sl.toFixed(2)+'（执行器同口径将卖出）':'逼近止损线¥'+x.sl.toFixed(2)+'（还差'+((x.price/x.sl-1)*100).toFixed(2)+'%，未触发）'); }).join('；');
   if(bar){ bar.innerHTML='🚨 <b>预警：</b>'+msg+' <button data-close-alert="1">关闭</button>'; bar.style.display='block'; }
   try{
     if(window.__nbNotify){ window.__nbNotify('⚠️ 止损线预警', {body:msg, tag:'st-sl'}); }
@@ -2338,6 +2362,7 @@ function refreshShortTerm(){
     updateStWarn();
   });
 }
+setTimeout(function(){ try{ _pullHoldStops(); }catch(e){} }, 1500);
 setTimeout(refreshShortTerm, 2500);   // 页面加载后先拉一次
 
 // ===== 推荐数据每3分钟按实时价重算（涨值巅峰线/止损线/买入区间跟随现价） =====
@@ -2437,7 +2462,8 @@ function holdAdviceFor(h){
   var pullback=high>0?(high-p)/high*100:0; // 距当日最高回落%
   var advice=null, why='', rule='', act='', level=0;
   // —— 抛售 SELL：利弗莫尔（截断亏损/顶部派发/强弱转换）· 欧奈尔（目标止盈/赶顶锁利） ——
-  if(p<=sl*1.02){ advice='SELL'; level=3; act='清仓'; rule='利弗莫尔·截断亏损'; why='现价¥'+p.toFixed(2)+'跌破止损线¥'+sl.toFixed(2)+'，"截断亏损，让利润奔跑"，立即清仓'; }
+  if(p<=sl){ advice='SELL'; level=3; act='清仓'; rule='利弗莫尔·截断亏损'; why='现价¥'+p.toFixed(2)+' 已跌破止损线¥'+sl.toFixed(2)+'（'+((p/sl-1)*100).toFixed(2)+'%），截断亏损，立即清仓'; }
+  else if(p<=sl*1.02){ advice='WARN'; level=1; act='预警'; rule='逼近止损'; why='现价¥'+p.toFixed(2)+' 距止损线¥'+sl.toFixed(2)+' 还有'+((p/sl-1)*100).toFixed(2)+'%，尚未破位，不触发清仓'; }
   else if(p>=tp){ advice='SELL'; level=2; act='清仓'; rule='欧奈尔·目标止盈'; why='已达止盈线¥'+tp.toFixed(2)+'，止盈纪律，落袋为安'; }
   else if(chg>=3&&chg<=7&&vr>=2.5&&amp>=8&&pullback>=3){ advice='SELL'; level=2; act='减半'; rule='利弗莫尔·顶部派发'; why='放量滞涨：涨'+chg.toFixed(2)+'%但量比'+vr.toFixed(1)+'、已从最高回落'+pullback.toFixed(1)+'%，主力在派发，先减一半'; }
   else if(pnlPct>=15&&chg>=6){ advice='SELL'; level=2; act='减半'; rule='欧奈尔·赶顶锁利'; why='累计盈利'+pnlPct.toFixed(1)+'%且加速赶顶（+'+chg.toFixed(2)+'%），先减半锁定利润'; }
@@ -2462,8 +2488,8 @@ function renderHoldAdvice(){
     var item=document.getElementById('pnl_'+h.code); if(!item) return;
     var wrap=item.parentNode; if(!wrap) return;
     var old=wrap.querySelector('.h-adv'); if(old) old.parentNode.removeChild(old);
-    var color=a.advice==='SELL'?'#c62828':'#2e7d32';
-    var tag=a.advice==='SELL'?'🚨 建议抛售':'➕ 建议加仓';
+    var color=a.advice==='SELL'?'#c62828':(a.advice==='WARN'?'#e65100':'#2e7d32');
+    var tag=a.advice==='SELL'?'🚨 建议抛售':(a.advice==='WARN'?'⚠️ 逼近止损·未破位':'➕ 建议加仓');
     var div=document.createElement('div');
     div.className='h-adv';
     div.style.cssText='margin-top:6px;padding:4px 8px;border-radius:4px;font-size:12px;color:#fff;background:'+color+';';
@@ -2659,7 +2685,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261125w';
+  var BUILD='20261125x';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2683,7 +2709,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261125w'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261125x'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
