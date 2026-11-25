@@ -2149,13 +2149,15 @@ function analyzeStock(code, opt){
   else if(score>=2.5){ v='🟡 可关注·等回踩'; col='#f9a825'; pos='不追高，回踩买入区间下沿再进'; }
   else if(score>=0){ v='⚪ 观望'; col='#546e7a'; pos='信号不足，等量能或资金确认'; }
   else { v='⛔ 暂不买入'; col='#2e7d32'; pos='风险大于机会，回避为主'; }
-  if(opt && opt.held){ v='✅ 持仓持有中（未触发卖出）'; col='#2e7d32'; pos='持仓中：跌破5日线且日内转负即卖出，否则继续持有等止盈'; }
-  return { score:score, verdict:v, color:col, reasons:rs, risks:rk, position:pos, rr:rr, p:p };
+  var _tag='';
+  if(opt && opt.held){ v='✅ 持仓持有中（未触发卖出）'; col='#2e7d32'; pos='持仓中：跌破5日线且日内转负即卖出，否则继续持有等止盈';
+    if(opt.cost>0 && p>0){ var _pn=(p/opt.cost-1)*100; _tag='浮盈 '+(_pn>=0?'+':'')+_pn.toFixed(2)+'%'; } }
+  return { score:score, verdict:v, color:col, reasons:rs, risks:rk, position:pos, rr:rr, p:p, tag:_tag };
 }
 function adviceBoxHtml(a){
   if(!a) return '<div style="font-size:12px;color:#999;padding:4px 0;">📊 数据分析：等待实时行情…</div>';
   var h='<div style="background:#f5f7ff;border-left:3px solid '+a.color+';border-radius:6px;padding:7px 10px;margin-top:6px;font-size:12px;line-height:1.7;">';
-  h+='<div style="font-weight:800;color:'+a.color+';">📊 数据分析：'+a.verdict+'<span style="float:right;color:#666;font-weight:400;">评分 '+a.score.toFixed(1)+'</span></div>';
+  h+='<div style="font-weight:800;color:'+a.color+';">📊 数据分析：'+a.verdict+'<span style="float:right;color:#666;font-weight:400;">'+(a.tag||('评分 '+a.score.toFixed(1)))+'</span></div>';
   if(a.reasons.length) h+='<div>✔ '+a.reasons.slice(0,3).join('；')+'</div>';
   if(a.risks.length) h+='<div style="color:#c62828;">⚠ '+a.risks.slice(0,2).join('；')+'</div>';
   h+='<div style="color:#1a237e;">💡 操作：'+a.position+'</div></div>';
@@ -2167,7 +2169,7 @@ function updateStockAdvice(){
   for(var i=0;i<bs.length;i++){
     var b=bs[i];
     var _itB=b.closest('.st-item'), _qB=_itB&&_itB.querySelector('.st-qty'); var _heldB=/已持仓/.test((_qB&&_qB.textContent)||'');
-    b.innerHTML=adviceBoxHtml(analyzeStock(b.getAttribute('data-code'), { tp:b.getAttribute('data-tp'), sl:b.getAttribute('data-sl'), held:_heldB }));
+    b.innerHTML=adviceBoxHtml(analyzeStock(b.getAttribute('data-code'), { tp:b.getAttribute('data-tp'), sl:b.getAttribute('data-sl'), held:_heldB, cost:(_itB?parseFloat(_itB.getAttribute('data-entry')):0)||0 }));
   }
   var cs=document.querySelectorAll('.cand-advice[data-code]');
   for(var j=0;j<cs.length;j++){
@@ -2653,7 +2655,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261125j';
+  var BUILD='20261125k';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2677,7 +2679,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261125j'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261125k'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -2714,7 +2716,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-25 11:17"></script>
+<script src="./update-check.js" data-page-upd="2026-11-25 11:19"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
