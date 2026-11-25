@@ -1,6 +1,66 @@
 {
  "days": [
   {
+   "date": "2026-11-26",
+   "stocks": [
+    {
+     "code": "sh601116",
+     "name": "三江购物",
+     "entry": 8.61,
+     "close": null,
+     "day1_close": null,
+     "chg": null,
+     "score": 9,
+     "src": "2026-11-26 07:33 收盘选股（门槛8）",
+     "gate_ok": 1
+    },
+    {
+     "code": "sz002103",
+     "name": "广博股份",
+     "entry": 5.88,
+     "close": null,
+     "day1_close": null,
+     "chg": null,
+     "score": 9,
+     "src": "2026-11-26 07:33 收盘选股（门槛8）",
+     "gate_ok": 1
+    },
+    {
+     "code": "sz000100",
+     "name": "TCL科技",
+     "entry": 4.92,
+     "close": null,
+     "day1_close": null,
+     "chg": null,
+     "score": 9,
+     "src": "2026-11-26 07:33 收盘选股（门槛8）",
+     "gate_ok": 0
+    },
+    {
+     "code": "sz000525",
+     "name": "红太阳",
+     "entry": 4.26,
+     "close": null,
+     "day1_close": null,
+     "chg": null,
+     "score": 9,
+     "src": "2026-11-26 07:33 收盘选股（门槛8）",
+     "gate_ok": 1
+    },
+    {
+     "code": "sz002321",
+     "name": "华英农业",
+     "entry": 1.78,
+     "close": null,
+     "day1_close": null,
+     "chg": null,
+     "score": 9,
+     "src": "2026-11-26 07:33 收盘选股（门槛8）",
+     "gate_ok": 1
+    }
+   ]
+  },
+  {
    "date": "2026-11-16",
    "stocks": [
     {
@@ -442,5 +502,5 @@
    ]
   }
  ],
- "updated": "2026-11-25 07:35"
+ "updated": "2026-11-26 07:33"
 }
