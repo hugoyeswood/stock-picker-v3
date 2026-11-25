@@ -1879,10 +1879,10 @@ function refreshHoldings(){
       '<div class="h-vol" data-volcode="'+h.code+'"></div>'+
       (function(_a,_c,_q,_lp){
         if(!_a){ if(_lp&&_c&&(_lp-_c)*_q<0){ return '<div class="h-advice" style="color:#546e7a;">📌 持有观望：未触发买卖信号，守住止损线¥'+(_c*0.95).toFixed(2)+'</div>'; } return ''; }
-        var isSell=_a.advice==='SELL';
-        var col=isSell?(_a.act==='清仓'?'#c62828':'#e65100'):(_a.act==='加仓'?'#2e7d32':'#558b2f');
-        var bg=isSell?(_a.act==='清仓'?'#ffebee':'#fff3e0'):(_a.act==='加仓'?'#e8f5e9':'#f1f8e9');
-        var tag=isSell?(_a.act==='清仓'?'🚨 建议清仓':'⚠️ 建议减半'):(_a.act==='加仓'?'➕ 建议加仓':'🔍 试探性加仓');
+        var isWarn=_a.advice==='WARN', isSell=_a.advice==='SELL';
+        var col=isWarn?'#e65100':(isSell?(_a.act==='清仓'?'#c62828':'#e65100'):(_a.act==='加仓'?'#2e7d32':'#558b2f'));
+        var bg=isWarn?'#fff3e0':(isSell?(_a.act==='清仓'?'#ffebee':'#fff3e0'):(_a.act==='加仓'?'#e8f5e9':'#f1f8e9'));
+        var tag=isWarn?'⚠️ 逼近止损·未破位':(isSell?(_a.act==='清仓'?'🚨 建议清仓':'⚠️ 建议减半'):(_a.act==='加仓'?'➕ 建议加仓':'🔍 试探性加仓'));
         return '<div class="h-advice" style="color:'+col+';background:'+bg+';padding:6px 8px;border-radius:6px;font-weight:700;">'+tag+' <span style="font-weight:400;">['+_a.rule+'] '+_a.why+'</span> <button data-holdop="open" data-code="'+_a.code+'" style="margin-left:6px;padding:4px 10px;border:none;border-radius:12px;background:'+col+';color:#fff;font-size:12px;">去操作</button></div>';
       })(holdAdviceFor(h), cost, h.qty, lp)+'</div>';
   });
@@ -2685,7 +2685,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261125x';
+  var BUILD='20261125y';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2709,7 +2709,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261125x'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261125y'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
