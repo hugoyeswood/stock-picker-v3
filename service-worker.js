@@ -1,6 +1,6 @@
 /* 离线缓存：HTML/JSON 永不落缓存，静态资源 network-first 兜底 */
-var VER='20261125p';
-var CACHE='20261125p' + VER;
+var VER='20261125q';
+var CACHE='20261125q' + VER;
 var STATIC = [
   './manifest.json',
   './icons/icon-192.png',
@@ -8,7 +8,7 @@ var STATIC = [
   './icons/apple-touch-icon.png'
 ];
 /* 这些路径一律走纯网络（no-store），失败才回退缓存，避免旧页面被长期顶住 */
-var NET_ONLY = /(index\.html|index_patched\.html|short_term_rec\.json|regime\.json|data\.json|candidates\.json|version\.json|manifest\.json|service-worker\.js)(\?|$)/;
+var NET_ONLY = /(index\.html|index_patched\.html|short_term_rec\.json|regime\.json|data\.json|candidates\.json|version\.json|manifest\.json|service-worker\.js|kline\.json|market_mood\.json)(\?|$)/;
 
 self.addEventListener('install', function (e) {
   e.waitUntil(
