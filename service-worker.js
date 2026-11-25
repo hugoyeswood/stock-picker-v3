@@ -1,6 +1,6 @@
 /* 离线缓存：HTML/JSON 永不落缓存，静态资源 network-first 兜底 */
-var VER='20261125c';
-var CACHE='spv3-20261125c' + VER;
+var VER='20261125e';
+var CACHE='spv3-20261125e' + VER;
 var STATIC = [
   './manifest.json',
   './icons/icon-192.png',
