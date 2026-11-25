@@ -258,7 +258,11 @@ print("正在逐只拉历史K线算买卖点（约半分钟）...")
 out = []
 for s, r, why in top:
     price = r["price"]
-    hands = int(BUDGET // (price * 100))
+    # 单只仓位上限 2054 元（凯利口径），不能用全部本金算手数
+    cap = min(float(BUDGET), 2054.0)
+    hands = int(cap // (price * 100))
+    if hands < 1 and price * 100 <= BUDGET:
+        hands = 1
     trade = calc_trade(r["code"], price)
     # —— 站上5日线（K线维度，利弗莫尔·关键点 / 欧奈尔·站上均线）补计 ——
     s2 = s
@@ -443,7 +447,10 @@ try:
             try:
                 if sp is not None:
                     p_f = float(sp)
-                    hands = int(BUDGET // (p_f * 100))
+                    cap = min(float(BUDGET), 2054.0)
+                    hands = int(cap // (p_f * 100))
+                    if hands < 1 and p_f * 100 <= BUDGET:
+                        hands = 1
                     st_qty = f"{hands}手（{hands*100}股）" if hands > 0 else "资金不足1手"
             except Exception:
                 st_qty = "--"
