@@ -146,6 +146,7 @@
   .tab-btn.active { background:#1a237e; color:#ffd54f; box-shadow:0 2px 8px rgba(26,35,126,.35); }
   .tab-page { display:none; }
   .tab-page.active { display:block; }
+  .sub{line-height:1.7;}
   .ver-badge { display:inline-block; background:#1a237e; color:#ffd54f; border-radius:6px; padding:1px 8px; font-size:11px; margin-left:6px; }
   .err-banner { display:none; background:#ffebee; color:#c62828; border:1px solid #ef9a9a; border-radius:8px; padding:8px 10px; font-size:12px; margin-bottom:10px; }
   .btn-primary { padding:8px 18px; background:#c62828; color:#fff; border:none; border-radius:10px; font-size:13px; cursor:pointer; }
@@ -196,8 +197,8 @@
 <script>
 (function(){ try{ if(/MicroMessenger/i.test(navigator.userAgent)){ var t=document.getElementById('wxTip'); if(t) t.style.display='block'; } }catch(e){} })();
 </script>
-<h1>今日候选清单 <span class="ver-badge">大师逻辑 V3</span></h1>
-<div class="sub">更新于 <span id="pageUpd">2026-11-17 08:44</span> · 数据源：腾讯 · 当前可用资金 ¥<span id="headCash">--</span> <span class="ver-badge">v20261118n58</span></div>
+<h1>今日候选清单 <span class="ver-badge brand">大师逻辑 V3</span></h1>
+<div class="sub">更新于 <span id="pageUpd">2026-11-17 08:44</span> · 数据源：腾讯 · 当前可用资金 ¥<span id="headCash">--</span> <span class="ver-badge" id="verBadge">v20261125l</span></div>
 <div id="errBanner" class="err-banner"></div>
 <div id="marketStatus" class="market-badge" style="display:none"></div>
 <div class="tip"><b>怎么用：</b>看卡片【状态】——"可买"按【建议买入区间】挂限价单，单只不超过2054元买足手数；"等回踩"别追高；"观望"先别碰。<br>
@@ -1109,7 +1110,7 @@ function refreshHeadMeta(){
     else if(up && window.__dataUpdated) up.textContent=String(window.__dataUpdated);
     var hc=document.getElementById('headCash');
     if(hc && typeof getBudget==='function') hc.textContent=(+getBudget()).toFixed(2);
-    try{ var _vbs=document.querySelectorAll('.ver-badge'); for(var _i=0;_i<_vbs.length;_i++){ _vbs[_i].textContent='v'+String(window.__BUILD); } }catch(e){}
+    try{ var _vb=document.getElementById('verBadge'); if(_vb) _vb.textContent='v'+String(window.__BUILD); }catch(e){}
   }catch(e){}
 }
 function refreshFundPanel(){ refreshHeadMeta(); var el=document.getElementById('fundPanel'); if(!el) return; var f=calcFund(); var h='';
@@ -2656,7 +2657,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261125l';
+  var BUILD='20261125m';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2680,7 +2681,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261125l'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261125m'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -2717,7 +2718,7 @@ function sellAll(code,name,price){
   setInterval(checkVer, 60000);
 })();
 </script>
-<script src="./update-check.js" data-page-upd="2026-11-25 11:21"></script>
+<script src="./update-check.js" data-page-upd="2026-11-25 11:24"></script>
 <script>
 /* ===== 买后跟踪 · 卖出提醒（V3） ===== */
 (function(){
