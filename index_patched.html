@@ -2025,10 +2025,11 @@ function updateStWarn(){
       var it=el; while(it&&it!==document.body&&(!it.className||String(it.className).indexOf('st-item')<0)) it=it.parentNode;
       var en=(it&&it.getAttribute)? parseFloat(it.getAttribute('data-entry')||'0'):0;
       if(en&&p>en*1.001) m='⏸ 已高于买区上限 ¥'+en.toFixed(2)+'，不追高（等回踩再买）';
+      else if(el.getAttribute('data-gate')==='0') m='⛔ 闸门未过·不加仓（位置/上冲频率越界，详见卡内红条）';
       else if(tp&&sl&&p>sl&&p<tp) m='✅ 区间内，可按建议买入区间分批';
     }
     el.innerHTML=m;
-    el.style.color=(m.indexOf('🚨')===0||m.indexOf('🔻')===0)?'#c62828':'#2e7d32';
+    el.style.color=(m.indexOf('🚨')===0||m.indexOf('🔻')===0||m.indexOf('⛔')===0)?'#c62828':'#2e7d32';
   });
 }
 function holdTimer(){ refreshHoldings(); updateStWarn(); updateVolPanels(); updatePnL(); monitorAlerts(); refreshWatch(); refreshRealtime(); refreshFundPanel(); }
@@ -2321,7 +2322,7 @@ function renderShortTerm(j){
       '<div class="st-ref">买入区间 <b>'+escHtml(s.buy_range||'--')+'</b> · 止损 <b>'+escHtml(s.stop_loss||'--')+'</b> · 止盈 <b>'+escHtml(s.take_profit||'--')+'</b></div>'+
       (_gateBlocked?'<div style="font-size:12px;color:#b71c1c;background:#ffebee;border:1px solid #ef9a9a;border-radius:6px;padding:5px 8px;margin:5px 0;">⛔ 买前闸门未过，不建仓：'+escHtml(s.gate_why||'60日位置/上冲频率越界')+'（位置'+(s.gate_pos!=null?Number(s.gate_pos).toFixed(3):'--')+'，次日上冲'+(s.gate_touch!=null?Math.round(Number(s.gate_touch)*100)+'%':'--')+'）</div>':'')+
       '<div class="st-advice" data-code="'+escHtml(s.code)+'" data-tp="'+escHtml(s.take_profit||'0')+'" data-sl="'+escHtml(s.stop_loss||'0')+'"></div>'+
-      '<div class="st-warn" data-stwarn="'+escHtml(s.code)+'" data-tp="'+escHtml(s.take_profit||'0')+'" data-sl="'+escHtml(s.stop_loss||'0')+'" data-tp0="'+escHtml(s.take_profit||'0')+'" data-sl0="'+escHtml(s.stop_loss||'0')+'"></div>'+
+      '<div class="st-warn" data-stwarn="'+escHtml(s.code)+'" data-gate="'+(_gateBlocked?'0':'1')+'" data-tp="'+escHtml(s.take_profit||'0')+'" data-sl="'+escHtml(s.stop_loss||'0')+'" data-tp0="'+escHtml(s.take_profit||'0')+'" data-sl0="'+escHtml(s.stop_loss||'0')+'"></div>'+
       '<div class="st-ops">'+
       '<button class="st-buy" data-stbuy="1" data-code="'+escHtml(s.code)+'" data-name="'+escHtml(s.name)+'" data-price="'+(isNaN(p)?'0':p)+'" '+(held?'style="opacity:0.5;" title="'+(window.__isBL&&window.__isBL(s.code)?'已在黑名单，只许减不许加':'已持有，可加仓')+'"':(_gateBlocked?'disabled style="background:#9e9e9e;opacity:0.6;" title="闸门未过，禁止建仓"':''))+'>'+((held&&window.__isBL&&window.__isBL(s.code))?'⛔ 已拉黑·只减不加':(held?'➕ 已持有·加仓':(_gateBlocked?'⛔ 闸门未过':'📥 买入')))+'</button><button class="st-buy" style="background:#1565c0;" data-kl="1" data-code="'+escHtml(s.code)+'" data-name="'+escHtml(s.name)+'">📈 K线</button>'+
       (held?'<button class="st-sell" data-stsell="1" data-code="'+escHtml(s.code)+'">💰 卖出</button>':'')+
@@ -2688,7 +2689,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261125z';
+  var BUILD='20261125aa';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2712,7 +2713,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261125z'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261125aa'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
