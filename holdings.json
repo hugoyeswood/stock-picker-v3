@@ -1,5 +1,5 @@
 {
- "ts": 1795672336691,
+ "ts": 1795672572261,
  "ver": 3,
  "principal": 10000.0,
  "cash": 3744.18,
@@ -13,8 +13,8 @@
    "name": "sz000725",
    "qty": 400,
    "cost": 4.362,
-   "last_price": 4.51,
-   "mv": 1804.0
+   "last_price": 4.5,
+   "mv": 1800.0
   },
   {
    "code": "sh600354",
@@ -29,11 +29,11 @@
    "name": "特一药业",
    "qty": 200,
    "cost": 8.465,
-   "last_price": 8.72,
-   "mv": 1744.0
+   "last_price": 8.74,
+   "mv": 1748.0
   }
  ],
  "trades_n": 35,
- "updated": "2026-11-26 13:52",
+ "updated": "2026-11-26 13:56",
  "_source": "guard_state.replay"
 }
