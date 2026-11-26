@@ -1,12 +1,12 @@
 {
- "ts": 1795672278820,
+ "ts": 1795672336691,
  "ver": 3,
  "principal": 10000.0,
- "cash": 5437.21,
- "mv": 3796.0,
- "replay_cash": 5437.21,
- "total": 9233.21,
- "totalPnl": -766.79,
+ "cash": 3744.18,
+ "mv": 5537.0,
+ "replay_cash": 3744.18,
+ "total": 9281.18,
+ "totalPnl": -718.82,
  "holdings": [
   {
    "code": "sz000725",
@@ -21,11 +21,19 @@
    "name": "sh600354",
    "qty": 300,
    "cost": 6.397,
-   "last_price": 6.64,
-   "mv": 1992.0
+   "last_price": 6.63,
+   "mv": 1989.0
+  },
+  {
+   "code": "sz002728",
+   "name": "特一药业",
+   "qty": 200,
+   "cost": 8.465,
+   "last_price": 8.72,
+   "mv": 1744.0
   }
  ],
- "trades_n": 34,
- "updated": "2026-11-26 13:51",
+ "trades_n": 35,
+ "updated": "2026-11-26 13:52",
  "_source": "guard_state.replay"
 }
