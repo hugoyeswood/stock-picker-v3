@@ -2692,7 +2692,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261126f';
+  var BUILD='20261126g';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2716,7 +2716,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261126f'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261126g'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ if(document.hidden) return; try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -3628,9 +3628,22 @@ setInterval(_stCheck, 1000);
      兜底口径与云端 v3 一致：必须同时跌破 MA5 与 MA10，评分≥3 才减半/清仓；
      MA 走腾讯前复权日K（同源 XHR，页面本来就在用 web.ifzq.gtimg.cn），5 分钟缓存。
      可用 localStorage guardLocalFallback='0' 关闭。 */
-  window.__fbMA={};
+  window.__fbMA={}; window.__fbCache=null;
+  function fbLoadCache(){
+    if(window.__fbCache) return;
+    window.__fbCache={};
+    try{
+      fetch('ma_cache.json?v='+Date.now()).then(function(r){ return r.json(); }).then(function(j){ window.__fbCache=j||{}; }).catch(function(){});
+    }catch(e){}
+  }
   function _fbAvg(a){ var s=0; for(var i=0;i<a.length;i++) s+=a[i]; return a.length?s/a.length:0; }
   function fbEnsureMA(code){
+    fbLoadCache();
+    var ci=window.__fbCache&&window.__fbCache.items&&window.__fbCache.items[code];
+    if(ci && +ci.ma5>0 && +ci.ma10>0){
+      window.__fbMA[code]={t:(window.__fbCache.ts||Date.now()),busy:0,ma5:+ci.ma5,ma10:+ci.ma10,cache:1};
+      return window.__fbMA[code];
+    }
     var c=window.__fbMA[code];
     if(c && (c.t || c.busy)) return c;
     window.__fbMA[code]={t:0,busy:1};
