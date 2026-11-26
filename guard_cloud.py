@@ -21,6 +21,9 @@
 """
 import io, json, os, sys, time, datetime, urllib.request, base64
 
+# 直连 opener（空 ProxyHandler），见 http_get 注释
+_OPENER_DIRECT = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
 TOPIC = os.environ.get('CG_TOPIC', 'https://ntfy.sh/spv3acc2-u81058-x7k2m9q-5c8e1f3a7d9b2e6f')
 # 2026-11-19 PATCH-08：默认改为 raw 实时源。原 Pages 静态站有 60~90s 重建延迟，
 # 守卫在延迟窗口内读到的还是回滚前的旧账本(37笔)，会判定云端被回滚并反推 37 笔 → 死循环。
@@ -75,9 +78,16 @@ def cfg():
 
 
 def http_get(url, timeout=25):
+    """2026-11-26 修：本机全局 http(s)_proxy 会把 ntfy.sh / 东财打成 502、Tunnel 断连，
+    导致守卫读不到云端账本（看见 33 笔旧账本 → ROLLBACK 拦截 → 守卫空转）。
+    改为**先直连**、失败再走代理。"""
     req = urllib.request.Request(url, headers={'User-Agent': 'cloudguard/1.0'})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return r.read()
+    try:
+        with _OPENER_DIRECT.open(req, timeout=timeout) as r:
+            return r.read()
+    except Exception:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return r.read()
 
 
 def _body_n(body):
