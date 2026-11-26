@@ -1,0 +1,143 @@
+{
+ "enable": true,
+ "note": "云端止损守卫：与前端 autoTick 同一套判定口径；默认只开硬规则（止盈/止损/周五清仓/持有满1日），三条尾盘锁利默认关闭（无回测支撑且会误杀微利票）。heartbeat_min=0 表示不做定时心跳，避免重复写账本覆盖手机端未同步操作。；2026-11-17 起启用日内快进快出，允许当日买入当日卖出；2026-11-17 13:25 按用户「多买多卖」要求：日内止盈2%→1.5%、最短持有15→10分钟",
+ "rules": {
+  "take_profit": true,
+  "stop_loss": true,
+  "friday_close": true,
+  "hold_one_day": false,
+  "intraday": false
+ },
+ "confirm_rounds": 2,
+ "heartbeat_min": 0,
+ "session": {
+  "start_hm": 925,
+  "end_hm": 1450,
+  "note": "交易日 09:25 起监控（集合竞价后即开始判止损，避免开盘急跌无人处理）"
+ },
+ "stall_alert": {
+  "enable": true,
+  "minutes": 30,
+  "note": "交易时段内快照超30分钟未更新则推ntfy告警，每天最多一条"
+ },
+ "intraday": {
+  "enable": false,
+  "tp_pct": 2.5,
+  "sl_pct": 1.2,
+  "min_hold_min": 10,
+  "note": "2026-11-19 关闭（实测反证）：6 笔平仓 0 胜 6 负、平均 -2.39%、单笔期望 -55.47 元。1.2% 止损窄于开盘 30 分钟正常噪音(±1.5%)，数学保本需 54.7% 胜率，实际 0%。恢复 T+1 口径（TP×1.10 / SL×0.95 / 持有1日），该口径回测单笔 +0.143%。"
+ },
+ "tao": {
+  "enable": true,
+  "config": "tools/tao_config.json",
+  "gate": "tools/tao_gate.py",
+  "note": "《道德经》闸门：知止(每笔必须有tp0/sl0)、为道日损(日12笔上限)、柔弱胜刚强(涨幅>2%禁买)、不敢为主(09:35前不抢开盘)、持而盈之(日盈利¥100即收手)、静为躁君(连亏2日降闸/3日只卖不买)、祸莫大于不知足(周目标达成预算×0.6)"
+ },
+ "interval_note_patch_1119": "start_hm 935→925：开盘瞬间即判止损，不用等到 09:35",
+ "stop_fast": {
+  "enable": true,
+  "note": "止损/日内止损类卖出一轮即执行（不等待 confirm_rounds 第二轮），止盈仍按原轮次"
+ },
+ "regime_gate": {
+  "enable": true,
+  "index_code": "sh000001",
+  "weak_pct": -0.5,
+  "action": "no_new_position",
+  "note": "上证跌幅≤-0.5% 禁止开新仓；另加 G1b：上证<MA5 亦禁止（2026-11-23 补丁，见 tools/buy_gate.py）"
+ },
+ "fee_gate": {
+  "enable": true,
+  "min_amount": 1500,
+  "note": "单笔<1500元时最低5元佣金使费率≥0.33%/边、往返≥0.7%，吃掉edge；与 tools/buy_gate.py G5 同阈值（2026-11-23 由 1200 上调）"
+ },
+ "entry_quality_gate": {
+  "enable": true,
+  "rules": {
+   "below_entry_pct": 1.0,
+   "min_sl_buffer_pct": 1.5,
+   "max_intraday_drop_pct": 1.5
+  },
+  "action": "skip_buy_keep_cash",
+  "note": "2026-11-19 用户定稿：推荐≠必买。①现价低于推荐价1%以上→推荐失效放弃；②现价距止损线缓冲<1.5%→买进就贴止损（紫光教训）放弃；③日内跌≤-1.5%仍下坠→放弃。三闸只减少买入，不放大仓位。"
+ },
+ "circuit_breaker": {
+  "enable": true,
+  "principal": 10000.0,
+  "max_drawdown_pct": 5.0,
+  "daily_loss_cap": 150.0,
+  "action": "halt_new_position",
+  "resume": "manual",
+  "note": "PATCH-14 硬顶：净值跌破 9500（本金-5%）或当日实亏 150 即停止开新仓。2026-11-23 08:10 用户口头指令「解除熔断」→ 置 resume_token=manual-ok-20261123，以解除时净值 9422.60 为新基准，二次熔断线 9234.15（再回撤 2%）；恢复仍需手动。",
+  "resume_token": "manual-ok-20261123",
+  "resume_net": 9422.6,
+  "resume_at": "2026-11-23 08:10",
+  "rearm_drawdown_pct": 2.0
+ },
+ "_patched_20261123": "删除三项未启用尾盘锁利开关；hold_one_day 置 false（取消“持有满1日无条件卖”，已被 8 笔买入回放证伪：无条件 T+1 卖把入场亏损锁定为卖出亏损）；fee_gate 门槛 1200→1500 与 buy_gate G5 统一；regime_gate 与 tools/buy_gate.py G1/G1b 同源",
+ "predict": {
+  "enable": true,
+  "min_score": 3,
+  "window": [
+   [
+    945,
+    1125
+   ],
+   [
+    1310,
+    1445
+   ]
+  ],
+  "note": "2026-11-24 v3（依据 tools/backtest_predict.py 的 66+ 次样本回测）：①双线确认=同时跌破MA5与MA10；②分批=3分减半、>=4分清仓；③缩量豁免取消——回测显示缩量组(123次)后T+3 -1.01%/T+5 -1.22%，比放量组(-0.30%/-0.93%)更差，缩量下跌不是健康回踩；④窗口09:45-11:25/13:10-14:45；⑤2轮确认；⑥减半后若次日仍双线破，solds/lots闸门自然放行，清掉余仓。",
+  "need_double_ma": true,
+  "shrink_exempt": false,
+  "split": {
+   "3": 0.5,
+   "4": 1.0
+  }
+ },
+ "data_only": {
+  "enable": true,
+  "note": "2026-11-24 用户定稿：所有买卖必须由量化信号触发，禁止人工主观/消息面下单",
+  "buy_gates": [
+   "✓可买徽章(评分≥7·ALERT≥8)",
+   "现价∈[推荐价×0.97, ×1.00]",
+   "当日涨幅≥-1.5%",
+   "云端账本已同步(≤10min)",
+   "单只≤2054元",
+   "当日未买入过该票",
+   "60日区间位置<0.78",
+   "非黑名单/非ST",
+   "周五不建仓"
+  ],
+  "sell_gates": [
+   "止盈×1.10",
+   "止损×0.95",
+   "predict_down(双线破MA5&MA10且score≥3·2轮确认)",
+   "尾盘确认闸(位置<0.40且未盈利或浮亏≥1.5%)",
+   "周五14:30清仓",
+   "破位-3%/涨停+9.6%/换手<1%/冲高回落(候选淘汰)"
+  ],
+  "no_signal_no_trade": true
+ },
+ "newpos_no_intraday_cut_20261125": {
+  "enable": true,
+  "rule": "当日新建仓（T日买入）当日不执行③日内-3%④跌破MA5⑤回落2.5%三条卖出判定，只保留①止损(sl)与②止盈(tp)及“成本保护线-1.5%”",
+  "evidence": "2026-11-25 全账本33笔配对14对：同日买卖7笔合计-291.09（均-41.58）；跨日持仓7笔合计-70.38（均-10.05）；胜率28.6%、平均盈利20.90、平均亏损44.51、盈亏比0.47；费用合计150.54占已实现亏损42%",
+  "landed_in": "tools/exec_sell.py",
+  "rollback": "exec_sell.py.bak"
+ },
+ "no_new_pos_after_1400_20261125": {
+  "enable": true,
+  "rule": "14:00~15:00 禁止开新仓（buy_gate G8）；尾盘建仓当日无法确认，隔夜风险未定价",
+  "evidence": "11-25 14:13 建 汉森/凤凰 两只，20分钟内被⑤砍掉，合计-36.87；同日买卖胜率0/7",
+  "landed_in": "tools/buy_gate.py (G8)",
+  "rollback": "buy_gate.py.bak"
+ },
+ "prebuy_gate_ui_20261125": {
+  "enable": true,
+  "rule": "推荐卡若 gate_ok=0（60日位置<0.10 或 次日上冲频率<50%）→ 红标“⛔ 买前闸门未过·不建仓”，买入键禁用，提示文案同步改为“闸门未过·不加仓”",
+  "evidence": "成长/下跌中继票买入即亏：汉森位置0.026、凤凰0.027、敦煌0.063，三只全部被 gate_recs 判 REJECT；今日3只持仓通过2只",
+  "landed_in": "stock-picker-v3-repo/index.html + build_site.py (BUILD 20261125aa)",
+  "rollback": "index.html.bak / build_site.py.bak"
+ }
+}
