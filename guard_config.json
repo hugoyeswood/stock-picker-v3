@@ -4,7 +4,7 @@
  "rules": {
   "take_profit": true,
   "stop_loss": true,
-  "friday_close": true,
+  "friday_close": false,
   "hold_one_day": false,
   "intraday": false
  },
@@ -106,15 +106,13 @@
    "单只≤2054元",
    "当日未买入过该票",
    "60日区间位置<0.78",
-   "非黑名单/非ST",
-   "周五不建仓"
+   "非黑名单/非ST"
   ],
   "sell_gates": [
    "止盈×1.10",
    "止损×0.95",
    "predict_down(双线破MA5&MA10且score≥3·2轮确认)",
    "尾盘确认闸(位置<0.40且未盈利或浮亏≥1.5%)",
-   "周五14:30清仓",
    "破位-3%/涨停+9.6%/换手<1%/冲高回落(候选淘汰)"
   ],
   "no_signal_no_trade": true
@@ -139,5 +137,16 @@
   "evidence": "成长/下跌中继票买入即亏：汉森位置0.026、凤凰0.027、敦煌0.063，三只全部被 gate_recs 判 REJECT；今日3只持仓通过2只",
   "landed_in": "stock-picker-v3-repo/index.html + build_site.py (BUILD 20261125aa)",
   "rollback": "index.html.bak / build_site.py.bak"
+ },
+ "patch_20261126_friday_trade": {
+  "enable": true,
+  "rule": "2026-11-26 用户指令：以后周五正常买卖——取消『周五不建仓』『周五14:30清仓』两条闸门，建仓/换股/持股过周末均按平常交易日处理",
+  "changed": [
+   "rules.friday_close=false",
+   "data_only.buy_gates/sell_gates 移除周五条目",
+   "auto_watch 周五跳过已删",
+   "index.html 周五闸门已注掉"
+  ],
+  "rollback": "friday_close=true 并恢复 buy/sell gates 两条即可"
  }
 }
