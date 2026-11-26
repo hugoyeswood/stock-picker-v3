@@ -1,12 +1,12 @@
 {
- "ts": 1795672572261,
+ "ts": 1795672755613,
  "ver": 3,
  "principal": 10000.0,
  "cash": 3744.18,
- "mv": 5537.0,
+ "mv": 5531.0,
  "replay_cash": 3744.18,
- "total": 9281.18,
- "totalPnl": -718.82,
+ "total": 9275.18,
+ "totalPnl": -724.82,
  "holdings": [
   {
    "code": "sz000725",
@@ -29,11 +29,11 @@
    "name": "特一药业",
    "qty": 200,
    "cost": 8.465,
-   "last_price": 8.74,
-   "mv": 1748.0
+   "last_price": 8.71,
+   "mv": 1742.0
   }
  ],
  "trades_n": 35,
- "updated": "2026-11-26 13:56",
+ "updated": "2026-11-26 13:59",
  "_source": "guard_state.replay"
 }
