@@ -1572,7 +1572,7 @@ function updateStockAdvice(){
     c.innerHTML=adviceBoxHtml(analyzeStock(c.getAttribute('data-code'), { tp:c.getAttribute('data-tp'), sl:c.getAttribute('data-sl'), score:parseFloat(c.getAttribute('data-score'))||0 }));
   }
 }
-// 5) 候选清单卡片：挂上建议容器（按代码匹配 candidates.json 的止盈/止损/评分）
+// 5) 旧候选卡片(历史函数)：挂上建议容器（按代码匹配 candidates.json 的止盈/止损/评分）
 function decorateCandidates(){
   var pool=window._pool; if(!pool || !pool.length) return;
   var map={};
@@ -1905,7 +1905,7 @@ setTimeout(checkAdvice, 3000);   // 页面加载后先检查一次
 function showDataLogic(){
   var old=document.getElementById('uiMask'); if(old&&old.parentNode) old.parentNode.removeChild(old);
   var b='<div style="max-height:58vh;overflow:auto;text-align:left;font-size:13px;line-height:1.85;padding-right:4px;">'+
-  '<div style="color:#1a237e;font-weight:800;">📊 今日推荐 / 候选清单：六维评分</div>'+
+  '<div style="color:#1a237e;font-weight:800;">📊 六维评分口径(今日推荐用)</div>'+
   '① <b>量能（量比）</b>：≥2.0 记 +2（放量启动）；1.2~2.0 记 +1；&lt;0.8 记 -1.5（缩量无动能）<br>'+
   '② <b>换手</b>：3~15% 记 +1.5（活跃）；15~20% +0.5；&gt;20% 记 -1（过热易被抛）；&lt;1% 记 -1（清淡）<br>'+
   '③ <b>日内位置</b>：现价站上分时均价 +1；跌破 -1；距当日高点回落≥4% 再 -1<br>'+
@@ -2055,7 +2055,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261126i';
+  var BUILD='20261126j';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2079,7 +2079,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261126i'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261126j'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ if(document.hidden) return; try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
