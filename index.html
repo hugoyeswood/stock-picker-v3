@@ -2478,7 +2478,7 @@ function holdAdviceFor(h){
   // —— 加仓 ADD：欧奈尔（突破回踩）· 利弗莫尔（关键点企稳）· 海龟（缩量回调）· 幽灵（盈利加码） ——
   else if(pnlPct>=-2&&pnlPct<=2&&chg>=1&&chg<=4&&vr>=1.5){ advice='ADD'; level=2; act='加仓'; rule='欧奈尔·突破回踩'; why='成本附近（'+pnlPct.toFixed(1)+'%）放量上攻（量比'+vr.toFixed(1)+'，+'+chg.toFixed(2)+'%），突破回踩买点，可加一份仓位'; }
   else if(p>sl*1.03&&pnlPct<=-1.8&&pnlPct>=-4.2&&chg>=-3&&chg<=0&&vr<1.5){ advice='ADD'; level=1; act='试探加仓'; rule='利弗莫尔·关键点企稳'; why='回调至成本下方'+(-pnlPct).toFixed(1)+'%、距止损线仍有'+((p/sl-1)*100).toFixed(1)+'%空间且缩量企稳（量比'+vr.toFixed(1)+'），关键点获支撑，先试探性加半份'; }
-  else if(pnlPct<=-2&&pnlPct>=-5&&amp>0&&amp<5&&chg>=-2&&chg<=1){ advice='ADD'; level=1; act='试探加仓'; rule='海龟·缩量回调到位'; why='缩量回调到位（振幅'+amp.toFixed(1)+'%），趋势中回踩，先试探性加半份'; }
+  else if(p>=sl*1.03&&pnlPct<=-2&&pnlPct>=-5&&amp>0&&amp<5&&chg>=-2&&chg<=1){ advice='ADD'; level=1; act='试探加仓'; rule='海龟·缩量回调到位'; why='缩量回调到位（振幅'+amp.toFixed(1)+'%），趋势中回踩，先试探性加半份'; }
   else if(pnlPct>=2&&pnlPct<=8&&chg>=1&&chg<=5&&vr>=1.5&&vr<=3){ advice='ADD'; level=2; act='加仓'; rule='幽灵·盈利加码'; why='趋势确认盈利+'+pnlPct.toFixed(1)+'%、量价配合（量比'+vr.toFixed(1)+'），金字塔加仓'; }
   /* 黑名单熔断票：任何"加仓"信号都作废（连续 2 日低于推荐价的票不许再加钱），
      只保留止损离场一条出口——与 tools/blacklist.json 和用户"中南按规则止损"的定稿一致。*/
@@ -2692,7 +2692,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261126c';
+  var BUILD='20261126d';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
