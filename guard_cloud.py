@@ -107,18 +107,23 @@ def _ledger_snapshot(now_ms):
     urls = [LEDGER_URL,
             'https://hugoyeswood.github.io/stock-picker-v3/ledger.json',
             'https://api.github.com/repos/hugoyeswood/stock-picker-v3/contents/ledger.json?ref=main']
+    cands = []
     for i, u in enumerate(urls):
         try:
             raw = http_get(u + ('&' if '?' in u else '?') + 'nc=' + str(int(time.time() * 1000)), 20)
             b = json.loads(raw) if i < 2 else json.loads(
                 base64.b64decode(json.loads(raw).get('content') or '').decode('utf-8'))
             if isinstance(b, dict) and 'd' in b and b.get('at', 0) <= now_ms + 120000 and str(b.get('lock')) != '0':
-                if i:
-                    log('ledger source #%d 生效 %s' % (i, u.split('?')[0][-40:]))
-                return b
+                cands.append((i, _body_n(b), int(b.get('at') or 0), b))
         except Exception as e:
             log('ledger fallback fail #%d: %s' % (i, e))
-    return None
+    if not cands:
+        return None
+    # 三源各自可能有 CDN 缓存时差：取交易笔数最多、同笔数取最新时戳的那一份
+    best = sorted(cands, key=lambda x: (x[1], x[2]))[-1]
+    log('ledger 候选源 %s -> 采用 #%d trades=%d'
+        % ([(x[0], x[1]) for x in cands], best[0], best[1]))
+    return best[3]
 
 
 def _pick_best(a, b, now_ms):
