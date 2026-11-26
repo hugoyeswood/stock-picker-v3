@@ -2692,7 +2692,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261126e';
+  var BUILD='20261126f';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2716,7 +2716,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261126e'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261126f'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ if(document.hidden) return; try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -3623,10 +3623,57 @@ setInterval(_stCheck, 1000);
     for(var i=0;i<g.hold.length;i++){ if(g.hold[i].code===code) return g.hold[i]; }
     return null;
   }
+  /* ============ 2026-11-26 守卫离线兜底（页面本地预判）============
+     场景：云端守卫停更 / 机器关机，页面只消费结论就会「没人卖」。
+     兜底口径与云端 v3 一致：必须同时跌破 MA5 与 MA10，评分≥3 才减半/清仓；
+     MA 走腾讯前复权日K（同源 XHR，页面本来就在用 web.ifzq.gtimg.cn），5 分钟缓存。
+     可用 localStorage guardLocalFallback='0' 关闭。 */
+  window.__fbMA={};
+  function _fbAvg(a){ var s=0; for(var i=0;i<a.length;i++) s+=a[i]; return a.length?s/a.length:0; }
+  function fbEnsureMA(code){
+    var c=window.__fbMA[code];
+    if(c && (c.t || c.busy)) return c;
+    window.__fbMA[code]={t:0,busy:1};
+    try{
+      var x=new XMLHttpRequest();
+      x.open('GET','https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param='+code+',day,,,30,qfq&_='+Date.now(),true);
+      x.onload=function(){
+        try{
+          var j=JSON.parse(x.responseText), d=((j||{}).data||{})[code]||{}, rows=d.qfqday||d.day||[], cl=[];
+          for(var i=0;i<rows.length;i++){ if(rows[i]&&rows[i].length>=6){ var v=parseFloat(rows[i][2]); if(v>0) cl.push(v); } }
+          window.__fbMA[code]=cl.length>=10?{t:Date.now(),busy:0,ma5:_fbAvg(cl.slice(-5)),ma10:_fbAvg(cl.slice(-10))}:{t:0,busy:0};
+        }catch(e){ window.__fbMA[code]={t:0,busy:0}; }
+      };
+      x.onerror=function(){ window.__fbMA[code]={t:0,busy:0}; };
+      x.send();
+    }catch(e){ window.__fbMA[code]={t:0,busy:0}; }
+    return window.__fbMA[code];
+  }
+  function fbGuardRow(code){
+    try{
+      if(localStorage.getItem('guardLocalFallback')==='0') return null;
+      var ma=fbEnsureMA(code);
+      if(!ma||!ma.t||!ma.ma5||!ma.ma10) return null;
+      var p=_lastPrice[code]||0, prev=_lastPrev[code]||0, hi=_lastHigh[code]||0;
+      if(!p||!prev||p<=0) return null;
+      var chg=(p/prev-1)*100, score=0, det=[];
+      if(p<ma.ma5){ score++; det.push('跌破MA5('+ma.ma5.toFixed(2)+')'); }
+      if(p<ma.ma10){ score++; det.push('跌破MA10('+ma.ma10.toFixed(2)+')'); }
+      if(chg<=-1.5){ score++; det.push('日内'+chg.toFixed(1)+'%'); }
+      if(hi>0 && (p/hi-1)*100<=-3){ score++; det.push('距高回落'+((p/hi-1)*100).toFixed(1)+'%'); }
+      var ic=parseFloat(window.__IDX_CHG);
+      if(!isNaN(ic) && (chg-ic)<=-2){ score++; det.push('跑输大盘'+(chg-ic).toFixed(1)+'点'); }
+      if(score<3) return null;
+      if(!(p<ma.ma5 && p<ma.ma10)) return null;
+      return {code:code, act:'sell', score:score, det:det, reason:'页面本地预判(守卫离线)'};
+    }catch(e){ return null; }
+  }
+  window.__fbGuardRow=fbGuardRow;
+
   function renderGuardDec(){
     var box=document.getElementById('guardDecBox'); if(!box) return;
     var g=window.__guardDec;
-    if(!g||!g.hold||!g.hold.length){ box.innerHTML='<span style="color:#999;">守卫暂未上报（交易时段每分钟刷新）</span>'; return; }
+    if(!g||!g.hold||!g.hold.length){ box.innerHTML='<span style="color:#999;">守卫暂未上报（每分钟刷新）｜已启用页面本地兜底：双线破MA5&MA10 且评分≥3 时自动减半/清仓</span>'; return; }
     var h='<b>🧭 守卫最近判定 '+g.at+'</b>（大盘 '+(g.idx==null?'—':((g.idx>0?'+':'')+g.idx.toFixed(2)+'%'))+'）<br>';
     g.hold.forEach(function(r){
       var nm=codeName(r.code)||r.name||r.code;
@@ -4078,6 +4125,7 @@ setInterval(_stCheck, 1000);
 
     var day=dayStr();
     var holdList=autoHoldings();
+    try{ holdList.forEach(function(h){ fbEnsureMA(h.code); }); }catch(e){}
 
     /* --- 卖出优先：每秒判定，同方向连续 3 秒确认后才下单 --- */
     holdList.forEach(function(h){
@@ -4104,6 +4152,7 @@ setInterval(_stCheck, 1000);
       }
       else {
         var _gd=(typeof guardRow==='function')?guardRow(h.code):null;
+        if(!_gd && typeof fbGuardRow==='function') _gd=fbGuardRow(h.code);
         if(_gd && _gd.act==='sell'){
           reason='守卫预判下行('+_gd.score+'分'+(_gd.reason?('|'+String(_gd.reason).slice(0,30)):'')+')';
           /* 与云端同口径：3 分减半、>=4 分清仓（100 股整手向下） */
