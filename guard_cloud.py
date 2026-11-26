@@ -9,7 +9,7 @@
 
 设计约束：
 - 只做卖出，不做买入（买入仍由手机端负责，避免重复建仓）
-- 卖出判定与前端顺序一致：止盈 → 止损 → 尾盘锁利 → 微利锁 → 尾盘保本 → 周五清仓 → 持有满1日
+- 卖出判定与前端顺序一致：止盈 → 止损 → 尾盘锁利 → 微利锁 → 尾盘保本 → 周五清仓(2026-11-26 起默认关闭) → 持有满1日
 - 需连续 N 轮满足同一条件才执行（等价于前端 confirmSig 的 2 秒确认，防抖动）
 - 每轮先 pull 最新云端快照再判定，已卖出的不会重复卖
 - 三条尾盘锁利默认关闭，可在 guard_config.json 里打开
@@ -45,7 +45,7 @@ GH_REPO = 'hugoyeswood/stock-picker-v3'
 DEFAULTS = {
     "enable": True,
     "rules": {
-        "take_profit": True, "stop_loss": True, "friday_close": True, "hold_one_day": True,
+        "take_profit": True, "stop_loss": True, "friday_close": False, "hold_one_day": True,
     },
     "confirm_rounds": 2,
     "heartbeat_min": 10,
@@ -806,6 +806,7 @@ def decide(h, price, hm, is_friday, day, rules, intra=None):
         return '止盈'
     if rules.get('stop_loss') and h['sl'] > 0 and price <= h['sl']:
         return '止损'
+    # 2026-11-26 用户指令：周五正常买卖，本条默认关闭（rules.friday_close=false）
     if rules.get('friday_close') and is_friday and hm >= 1430:
         return '周五清仓（不过周末）'
     if rules.get('hold_one_day') and h['buyDay'] and h['buyDay'] < day and hm >= 940:
