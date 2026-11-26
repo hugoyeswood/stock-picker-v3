@@ -1,35 +1,39 @@
 {
- "at": 1795591122522,
- "trades_n": 33,
+ "ts": 1795658683150,
+ "ver": 3,
+ "principal": 10000.0,
  "cash": 3938.98,
+ "mv": 5326.0,
+ "replay_cash": 3938.98,
+ "total": 9264.98,
+ "totalPnl": -735.02,
  "holdings": [
   {
    "code": "sz000725",
-   "name": "京东方Ａ",
+   "name": "sz000725",
    "qty": 400,
    "cost": 4.362,
-   "last_price": 4.43,
-   "mv": 1772.0
+   "last_price": 4.53,
+   "mv": 1812.0
   },
   {
    "code": "sh600354",
-   "name": "敦煌种业",
+   "name": "sh600354",
    "qty": 300,
    "cost": 6.397,
-   "last_price": 6.38,
-   "mv": 1914.0
+   "last_price": 6.7,
+   "mv": 2010.0
   },
   {
    "code": "sz002567",
-   "name": "唐人神",
+   "name": "sz002567",
    "qty": 400,
-   "cost": 3.91,
-   "last_price": 3.84,
-   "mv": 1536.0
+   "cost": 3.923,
+   "last_price": 3.76,
+   "mv": 1504.0
   }
  ],
- "mv": 5222.0,
- "total": 9160.98,
- "totalPnl": -839.02,
- "updated": "2026-11-25 15:00"
+ "trades_n": 33,
+ "updated": "2026-11-26 10:04",
+ "_source": "guard_state.replay"
 }
