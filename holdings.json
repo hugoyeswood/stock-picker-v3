@@ -1,31 +1,31 @@
 {
- "ts": 1795660195790,
+ "ts": 1795660392857,
  "ver": 3,
  "principal": 10000.0,
  "cash": 5437.21,
- "mv": 3833.0,
+ "mv": 3826.0,
  "replay_cash": 5437.21,
- "total": 9270.21,
- "totalPnl": -729.79,
+ "total": 9263.21,
+ "totalPnl": -736.79,
  "holdings": [
   {
    "code": "sz000725",
    "name": "sz000725",
    "qty": 400,
    "cost": 4.362,
-   "last_price": 4.52,
-   "mv": 1808.0
+   "last_price": 4.51,
+   "mv": 1804.0
   },
   {
    "code": "sh600354",
    "name": "sh600354",
    "qty": 300,
    "cost": 6.397,
-   "last_price": 6.75,
-   "mv": 2025.0
+   "last_price": 6.74,
+   "mv": 2022.0
   }
  ],
  "trades_n": 34,
- "updated": "2026-11-26 10:29",
+ "updated": "2026-11-26 10:33",
  "_source": "guard_state.replay"
 }
