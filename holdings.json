@@ -1,12 +1,12 @@
 {
- "ts": 1795674195788,
+ "ts": 1795674392152,
  "ver": 3,
  "principal": 10000.0,
  "cash": 488.87,
- "mv": 8712.0,
+ "mv": 8721.0,
  "replay_cash": 488.87,
- "total": 9200.87,
- "totalPnl": -799.13,
+ "total": 9209.87,
+ "totalPnl": -790.13,
  "holdings": [
   {
    "code": "sz000725",
@@ -37,19 +37,19 @@
    "name": "三江购物",
    "qty": 200,
    "cost": 8.675,
-   "last_price": 8.62,
-   "mv": 1724.0
+   "last_price": 8.65,
+   "mv": 1730.0
   },
   {
    "code": "sz002038",
    "name": "双鹭药业",
    "qty": 300,
    "cost": 5.047,
-   "last_price": 5.01,
-   "mv": 1503.0
+   "last_price": 5.02,
+   "mv": 1506.0
   }
  ],
  "trades_n": 14,
- "updated": "2026-11-26 14:23",
+ "updated": "2026-11-26 14:26",
  "_source": "guard_state.replay"
 }
