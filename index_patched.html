@@ -2055,7 +2055,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261126p';
+  var BUILD='20261126q';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2079,7 +2079,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261126p'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261126q'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ if(document.hidden) return; try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
@@ -3521,7 +3521,8 @@ setInterval(_stCheck, 1000);
       if(h.tp>0 && p>=h.tp) reason='止盈';
       else if(h.sl>0 && p<=h.sl) reason='止损';
       /* 2026-11-16 与云端守卫统一：三条尾盘锁利默认关闭（TAIL_LOCK=false），避免误砍微赚票 */
-      else if(isFriday() && hm>=1430) reason='周五清仓（不过周末）';
+      /* 2026-11-26 用户指令：以后周五正常买卖，周五清仓闸门关闭 */
+      else if(false && isFriday() && hm>=1430) reason='周五清仓（不过周末）';
       else if(TAIL_EXIT && hm>=TAIL_EXIT_HM && h.buyDay===day){
         var tx=window.__tailExitCheck({px:p,high:_lastHigh[h.code],low:_lastLow[h.code],cost:ca,pos:TAIL_EXIT_POS,maxLoss:TAIL_EXIT_LOSS});
         if(tx) reason=tx;
@@ -3555,8 +3556,7 @@ setInterval(_stCheck, 1000);
       return;
     }
 
-    /* --- 周五不建仓 --- */
-    if(isFriday()) return;
+    /* --- 周五不建仓：2026-11-26 用户指令取消，周五正常建仓 --- */
 
     /* --- 一夜持股战法：14:15 后自动扫描（每 10 分钟最多一次），grade2 标的并入买股池 --- */
     if(hm>=1415 && window.__nightTrader && window.__nightTrader.scan){
