@@ -1,6 +1,71 @@
 {
  "days": [
   {
+   "date": "2026-11-27",
+   "stocks": [
+    {
+     "code": "sh600177",
+     "name": "雅戈尔",
+     "entry": 9.16,
+     "close": null,
+     "day1_close": null,
+     "chg": null,
+     "score": 9,
+     "lv": null,
+     "src": "2026-11-27 07:31 收盘选股（门槛8·ALERT）",
+     "gate_ok": 0
+    },
+    {
+     "code": "sz002749",
+     "name": "国光股份",
+     "entry": 9.05,
+     "close": null,
+     "day1_close": null,
+     "chg": null,
+     "score": 8,
+     "lv": null,
+     "src": "2026-11-27 07:31 收盘选股（门槛8·ALERT）",
+     "gate_ok": 0
+    },
+    {
+     "code": "sz002588",
+     "name": "史丹利",
+     "entry": 7.63,
+     "close": null,
+     "day1_close": null,
+     "chg": null,
+     "score": 9,
+     "lv": null,
+     "src": "2026-11-27 07:31 收盘选股（门槛8·ALERT）",
+     "gate_ok": 0
+    },
+    {
+     "code": "sz000683",
+     "name": "博源化工",
+     "entry": 6.01,
+     "close": null,
+     "day1_close": null,
+     "chg": null,
+     "score": 9,
+     "lv": null,
+     "src": "2026-11-27 07:31 收盘选股（门槛8·ALERT）",
+     "gate_ok": 1
+    },
+    {
+     "code": "sz000690",
+     "name": "宝新能源",
+     "entry": 5.57,
+     "close": null,
+     "day1_close": null,
+     "chg": null,
+     "score": 9,
+     "lv": null,
+     "src": "2026-11-27 07:31 收盘选股（门槛8·ALERT）",
+     "gate_ok": 0
+    }
+   ]
+  },
+  {
    "date": "2026-11-26",
    "stocks": [
     {
@@ -519,5 +584,5 @@
    }
   }
  ],
- "updated": "2026-11-26 07:33"
+ "updated": "2026-11-27 08:35"
 }
