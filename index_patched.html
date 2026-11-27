@@ -392,16 +392,16 @@ function calcFund(){ var principal=getPrincipal();
   }
   var lg=replayLedger();
   var cash=lg.cash, mv=lg.mv, total=cash+mv;
-  /* n27：云端真值生效时，现金与市值跟云端持仓（价格用实时行情） */
+  /* n27：云端真值生效时，现金与市值跟云端持仓（价格用实时行情）
+     2026-11-27 修正：云端守卫按真实流水重放；本地账本被多设备重复记账/压缩后 replay 会失真
+     （曾算出可用 5719.32、总资产 14531，现金与市值重复计）。只要云端上报有持仓就以上报为准。 */
   try{ if(window.__HT && window.__HT.ok && window.__HT.use){
-    var _hc=(+window.__HT.cash||0);
-    /* 2026-11-26：云端上报 cash 与本地流水重放差 >1 元时以流水为准（资金只认成交流水）。
-       曾出现上报 3942.55 vs 流水 3938.98 差 3.57，页面按上报值多算可用资金。 */
-    cash=(Math.abs(_hc-lg.cash)>1 && lg.holdings && lg.holdings.length ? lg.cash : _hc); mv=0;
-    window.__HT.holdings.forEach(function(h){ var q=+h.qty||0;
-      var p=0; try{ p=(typeof _lastPrice!=='undefined' && _lastPrice && _lastPrice[h.code])||0; }catch(e){}
-      if(!p) p=(+h.last_price||+h.cost||0); mv+=q*p; });
-    total=cash+mv;
+    var _hc=(+window.__HT.cash||0), _hn=(window.__HT.holdings||[]).length;
+    if(_hn>0 && _hc>=0){ cash=_hc; mv=0;
+      window.__HT.holdings.forEach(function(h){ var q=+h.qty||0;
+        var p=0; try{ p=(typeof _lastPrice!=='undefined' && _lastPrice && _lastPrice[h.code])||0; }catch(e){}
+        if(!p) p=(+h.last_price||+h.cost||0); mv+=q*p; });
+      total=cash+mv; }
   } }catch(e){}
   try{ if(Math.abs((parseFloat(localStorage.getItem('myBudget'))||0)-cash)>1){ localStorage.setItem('myBudget',String(cash)); } }catch(e){}
   return { cash:cash, principal:principal, mv:mv, total:total, totalPnl:total-LT_BASE_ASSET, dupBad:lg.dup, todayPnl:calcTodayPnL() }; }
@@ -415,7 +415,7 @@ function refreshHeadMeta(){
     if(up&&_pu&&_pu.getAttribute('data-page-upd')) up.textContent=_pu.getAttribute('data-page-upd');
     else if(up && window.__dataUpdated) up.textContent=String(window.__dataUpdated);
     var hc=document.getElementById('headCash');
-    if(hc && typeof getBudget==='function') hc.textContent=(+getBudget()).toFixed(2);
+    if(hc){ var _cv=null; try{ _cv=(typeof calcFund==='function')?calcFund().cash:null; }catch(e){} hc.textContent=(_cv===null?(+getBudget()).toFixed(2):(+_cv).toFixed(2)); }
     try{ var _vb=document.getElementById('verBadge'); if(_vb) _vb.textContent='v'+String(window.__BUILD); }catch(e){}
   }catch(e){}
 }
@@ -2055,7 +2055,7 @@ function sellAll(code,name,price){
 /* ===== 自动升级：发现新版立即切换，手机端无需手动重开 ===== */
 (function(){
   if(!('serviceWorker' in navigator)) return;
-  var BUILD='20261127c';
+  var BUILD='20261127d';
   try{ window.__BUILD=BUILD; }catch(e){}
   var hadCtrl=!!navigator.serviceWorker.controller;
   var switching=false;
@@ -2079,7 +2079,7 @@ function sellAll(code,name,price){
     doSwitch();
   });
 
-  navigator.serviceWorker.register('./service-worker.js?v=20261127c'+BUILD, {updateViaCache:'none'}).then(function(reg){
+  navigator.serviceWorker.register('./service-worker.js?v=20261127d'+BUILD, {updateViaCache:'none'}).then(function(reg){
     // n62：reg.update() 返回 Promise，必须 catch，否则拒绝会冒成未处理错误
     try{ if(reg.update){ var _u=reg.update(); if(_u&&_u.catch) _u.catch(function(){}); } }catch(e){}
     setInterval(function(){ if(document.hidden) return; try{ if(reg.update){ var _u2=reg.update(); if(_u2&&_u2.catch) _u2.catch(function(){}); } }catch(e){} }, 30000);
