@@ -1,16 +1,16 @@
 {
- "ts": 1795675771377,
+ "ts": 1795742710976,
  "ver": 3,
  "principal": 10000.0,
- "cash": 488.87,
- "mv": 8812.0,
- "replay_cash": 488.87,
- "total": 9300.87,
- "totalPnl": -699.13,
+ "cash": 310.72,
+ "mv": 8721.0,
+ "replay_cash": 310.72,
+ "total": 9031.72,
+ "totalPnl": -968.28,
  "holdings": [
   {
    "code": "sz000725",
-   "name": "京东方Ａ",
+   "name": "sz000725",
    "qty": 400,
    "cost": 4.362,
    "last_price": 4.5,
@@ -18,38 +18,38 @@
   },
   {
    "code": "sh600354",
-   "name": "敦煌种业",
+   "name": "sh600354",
    "qty": 300,
    "cost": 6.397,
-   "last_price": 6.69,
-   "mv": 2007.0
+   "last_price": 6.65,
+   "mv": 1995.0
   },
   {
    "code": "sz002728",
-   "name": "特一药业",
+   "name": "sz002728",
    "qty": 200,
    "cost": 8.465,
-   "last_price": 8.64,
-   "mv": 1728.0
+   "last_price": 8.46,
+   "mv": 1692.0
   },
   {
    "code": "sh601116",
-   "name": "三江购物",
+   "name": "sh601116",
    "qty": 200,
    "cost": 8.675,
-   "last_price": 8.72,
-   "mv": 1744.0
+   "last_price": 8.7,
+   "mv": 1740.0
   },
   {
    "code": "sz002038",
-   "name": "双鹭药业",
+   "name": "sz002038",
    "qty": 300,
    "cost": 5.047,
-   "last_price": 5.11,
-   "mv": 1533.0
+   "last_price": 4.98,
+   "mv": 1494.0
   }
  ],
- "trades_n": 14,
- "updated": "2026-11-26 15:00",
+ "trades_n": 26,
+ "updated": "2026-11-27 09:25",
  "_source": "guard_state.replay"
 }
